@@ -2,17 +2,40 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { Role, RoleDocument } from './schema/role.schema';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { CreateRoleDto } from './dto/create-role.dto';
+import { CreateAccountDto } from './dto/create-account.dto';
+import { Account, AccountDocument } from './schema/account.schema';
+import { User, UserDocument } from '../users/schema/user.schema';
+import * as bcrypt from 'bcrypt';
+import { LoginDto } from './dto/login.dto';
+import { JwtService } from '@nestjs/jwt';
+import { AccountDto } from './dto/account.dto';
+import { plainToInstance } from 'class-transformer';
+import { formatPhone } from 'src/shared/utils/formatPhone';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectModel(Role.name)
     private roleModel: Model<RoleDocument>,
+
+    @InjectModel(User.name)
+    private userModel: Model<UserDocument>,
+
+    @InjectModel(Account.name)
+    private accountModel: Model<AccountDocument>,
+
+    private jwtService: JwtService,
+
+    private configService: ConfigService,
   ) {}
 
   async createNewRole(dto: CreateRoleDto): Promise<RoleDocument> {
@@ -37,4 +60,175 @@ export class AuthService {
       );
     }
   }
+
+  async getRoleByName(roleName: string): Promise<RoleDocument> {
+    const role = await this.roleModel.findOne({ roleName }).exec();
+    if (!role) {
+      throw new BadRequestException(`Không tìm thấy role với tên: ${roleName}`);
+    }
+    return role;
+  }
+
+  async createNewAccount(dto: CreateAccountDto): Promise<AccountDocument> {
+    try {
+      const defaultRole = await this.getRoleByName('user');
+      const user = await this.userModel.create({
+        fullName: dto.fullName,
+        avatar: dto.avatar,
+        gender: dto.gender,
+        address: dto.address,
+        dateOfBirth: dto.dateOfBirth,
+        bio: dto.bio,
+      });
+
+      const saltRounds = 10;
+      const hashedPassword = await bcrypt.hash(dto.password, saltRounds);
+
+      const newAccount = new this.accountModel({
+        phone: formatPhone(dto.phone),
+        password: hashedPassword,
+        //isActive: default-false
+        roles: [...(Array.isArray(dto.role) ? dto.role : []), defaultRole._id],
+        user: user._id,
+      });
+
+      return await newAccount.save();
+    } catch (error) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      if (error.code === 11000) {
+        throw new ConflictException({
+          message: `Tài khoản đã tồn tại`,
+          errorCode: 'EXISTS',
+        });
+      }
+      throw new BadRequestException(
+        `Tạo tài khoản thất bại: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  async loginUser(dto: LoginDto): Promise<{
+    accessToken: string;
+    refreshToken: string;
+    account: AccountDto;
+  }> {
+    try {
+      const account = await this.accountModel.findOne({
+        phone: formatPhone(dto.phone),
+      });
+
+      if (!account) throw new NotFoundException('Tài khoản không tồn tại');
+
+      const isMatch = await bcrypt.compare(dto.password, account.password);
+      if (!isMatch) throw new UnauthorizedException('Mật khẩu không đúng');
+
+      const payload = {
+        accountId: account._id,
+        phone: account.phone,
+        role: account.roles,
+      };
+
+      const accessToken = this.jwtService.sign(payload, {
+        secret: this.configService.get<string>('JWT_SECRET'),
+        expiresIn: '15m',
+      });
+      const refreshToken = this.jwtService.sign(payload, {
+        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+        expiresIn: '7d',
+      });
+
+      const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
+
+      const activeAccount = await this.accountModel.findByIdAndUpdate(
+        account._id,
+        { isActive: true, refreshToken: hashedRefreshToken },
+        { new: true },
+      );
+      if (!activeAccount)
+        throw new NotFoundException(
+          'Không thể đăng nhập tài khoản lúc này, vui lòng thử lại',
+        );
+
+      const populatedAccount = await activeAccount.populate('user');
+
+      const accountDto = plainToInstance(
+        AccountDto,
+        populatedAccount.toObject(),
+        { excludeExtraneousValues: true },
+      );
+
+      return {
+        accessToken,
+        refreshToken,
+        account: accountDto,
+      };
+    } catch (error) {
+      console.error('Lỗi loginUser:', error);
+      throw error;
+    }
+  }
+
+  async refreshTokens(
+    dto: RefreshTokenDto,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
+    const { refreshToken } = dto;
+
+    try {
+      // 1. Verify token
+      const payload: JwtPayload = this.jwtService.verify(refreshToken, {
+        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+      });
+
+      // 2. Tìm tài khoản theo payload.accountId
+      const account = await this.accountModel.findById(payload.accountId);
+      if (!account || !account.refreshToken) {
+        throw new UnauthorizedException('Refresh token không hợp lệ');
+      }
+
+      // 3. So sánh refreshToken client gửi với refreshToken hash trong db
+      const isMatch = await bcrypt.compare(refreshToken, account.refreshToken);
+      if (!isMatch) {
+        throw new UnauthorizedException('Refresh token không hợp lệ');
+      }
+
+      // 4. Tạo accessToken mới
+      const newPayload = {
+        accountId: account._id,
+        phone: account.phone,
+        role: account.roles,
+      };
+
+      const newAccessToken = this.jwtService.sign(newPayload, {
+        secret: this.configService.get<string>('JWT_SECRET'),
+        expiresIn: '15m',
+      });
+
+      // 5. Tạo refreshToken mới (tuỳ chọn)
+      const newRefreshToken = this.jwtService.sign(newPayload, {
+        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+        expiresIn: '7d',
+      });
+
+      // 6. Hash và lưu refreshToken mới vào db
+      const hashedRefreshToken = await bcrypt.hash(newRefreshToken, 10);
+      account.refreshToken = hashedRefreshToken;
+      await account.save();
+
+      // 7. Trả về tokens mới
+      return {
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
+      };
+    } catch (error) {
+      console.log(error);
+
+      throw new UnauthorizedException('Không thể làm mới token');
+    }
+  }
+}
+
+export interface JwtPayload {
+  accountId: string;
+  phone: string;
+  role: Types.ObjectId[];
 }

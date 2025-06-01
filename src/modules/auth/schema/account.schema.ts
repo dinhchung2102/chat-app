@@ -6,7 +6,7 @@ export type AccountDocument = Account & Document;
 @Schema({ timestamps: true })
 export class Account {
   @Prop({ required: true, unique: true })
-  username: string;
+  phone: string;
 
   @Prop({ required: false })
   password: string;
@@ -14,11 +14,14 @@ export class Account {
   @Prop({ default: false })
   isActive: boolean;
 
-  @Prop({ type: [Types.ObjectId], ref: 'Role', default: [] })
+  @Prop({ type: [Types.ObjectId], ref: 'Role' })
   roles: Types.ObjectId[];
 
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   user: Types.ObjectId;
+
+  @Prop()
+  refreshToken?: string;
 }
 
 export const AccountSchema = SchemaFactory.createForClass(Account);
