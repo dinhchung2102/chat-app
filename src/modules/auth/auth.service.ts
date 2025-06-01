@@ -106,26 +106,27 @@ export class AuthService {
       );
     }
   }
-
   async loginUser(dto: LoginDto): Promise<{
     accessToken: string;
     refreshToken: string;
     account: AccountDto;
   }> {
     try {
-      const account = await this.accountModel.findOne({
-        phone: formatPhone(dto.phone),
-      });
+      const account = await this.accountModel
+        .findOne({ phone: formatPhone(dto.phone) })
+        .populate('roles');
 
       if (!account) throw new NotFoundException('Tài khoản không tồn tại');
 
       const isMatch = await bcrypt.compare(dto.password, account.password);
       if (!isMatch) throw new UnauthorizedException('Mật khẩu không đúng');
 
+      const roleNames = account.roles.map((role: any) => role.roleName);
+
       const payload = {
         accountId: account._id,
         phone: account.phone,
-        role: account.roles,
+        roles: roleNames,
         userId: account.user,
       };
 
@@ -133,6 +134,7 @@ export class AuthService {
         secret: this.configService.get<string>('JWT_SECRET'),
         expiresIn: '15m',
       });
+
       const refreshToken = this.jwtService.sign(payload, {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
         expiresIn: '7d',
@@ -140,9 +142,10 @@ export class AuthService {
 
       const activeAccount = await this.accountModel.findByIdAndUpdate(
         account._id,
-        { isActive: true, refreshToken: refreshToken },
+        { isActive: true, refreshToken },
         { new: true },
       );
+
       if (!activeAccount)
         throw new NotFoundException(
           'Không thể đăng nhập tài khoản lúc này, vui lòng thử lại',
@@ -179,21 +182,31 @@ export class AuthService {
       });
 
       // 2. Tìm tài khoản theo payload.accountId
-      const account = await this.accountModel.findById(payload.accountId);
+      const account = await this.accountModel
+        .findById(payload.accountId)
+        .populate('roles');
       if (!account || !account.refreshToken) {
-        throw new UnauthorizedException('Refresh token không hợp lệ');
+        throw new UnauthorizedException(
+          'Refresh token không hợp lệ hoặc đã hết hạn',
+        );
       }
 
       // 3. So sánh refreshToken client gửi với refreshToken trong db
       if (refreshToken != account.refreshToken) {
-        throw new UnauthorizedException('Refresh token không hợp lệ');
+        throw new UnauthorizedException(
+          'Refresh token không hợp lệ hoặc đã hết hạn',
+        );
       }
 
       // 4. Tạo accessToken mới
+      const roleNames = account.roles
+        .filter((role: any) => role && role.roleName) // đảm bảo role và role.name hợp lệ
+        .map((role: any) => role.roleName);
+
       const newPayload = {
         accountId: account._id,
         phone: account.phone,
-        role: account.roles,
+        roles: roleNames, // truyền mảng tên role đúng chuẩn
       };
 
       const newAccessToken = this.jwtService.sign(newPayload, {
@@ -217,9 +230,9 @@ export class AuthService {
         refreshToken: newRefreshToken,
       };
     } catch (error) {
-      console.log(error);
-
-      throw new UnauthorizedException('Không thể làm mới token');
+      throw new UnauthorizedException(
+        error?.message || 'Token không hợp lệ hoặc đã hết hạn',
+      );
     }
   }
 }
@@ -227,6 +240,6 @@ export class AuthService {
 export interface JwtPayload {
   accountId: string;
   phone: string;
-  role: Types.ObjectId[];
+  roles: string[];
   user: Types.ObjectId;
 }

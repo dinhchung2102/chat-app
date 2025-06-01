@@ -12,8 +12,11 @@ import { UserDocument } from './schema/user.schema';
 import { UserDto } from './dto/user.dto';
 import { UserService } from './user.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { SkipThrottle } from '@nestjs/throttler';
 
 @UseFilters(new AllExceptionsFilter())
+// @SkipThrottle()   // Các route bên trong controller này sẽ không bị throttling
+@SkipThrottle()
 @Controller('users')
 export class UserController {
   constructor(private readonly userService: UserService) {}
