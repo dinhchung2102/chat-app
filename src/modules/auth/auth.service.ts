@@ -126,6 +126,7 @@ export class AuthService {
         accountId: account._id,
         phone: account.phone,
         role: account.roles,
+        userId: account.user,
       };
 
       const accessToken = this.jwtService.sign(payload, {
@@ -137,11 +138,9 @@ export class AuthService {
         expiresIn: '7d',
       });
 
-      const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
-
       const activeAccount = await this.accountModel.findByIdAndUpdate(
         account._id,
-        { isActive: true, refreshToken: hashedRefreshToken },
+        { isActive: true, refreshToken: refreshToken },
         { new: true },
       );
       if (!activeAccount)
@@ -185,9 +184,8 @@ export class AuthService {
         throw new UnauthorizedException('Refresh token không hợp lệ');
       }
 
-      // 3. So sánh refreshToken client gửi với refreshToken hash trong db
-      const isMatch = await bcrypt.compare(refreshToken, account.refreshToken);
-      if (!isMatch) {
+      // 3. So sánh refreshToken client gửi với refreshToken trong db
+      if (refreshToken != account.refreshToken) {
         throw new UnauthorizedException('Refresh token không hợp lệ');
       }
 
@@ -209,9 +207,8 @@ export class AuthService {
         expiresIn: '7d',
       });
 
-      // 6. Hash và lưu refreshToken mới vào db
-      const hashedRefreshToken = await bcrypt.hash(newRefreshToken, 10);
-      account.refreshToken = hashedRefreshToken;
+      // 6.lưu refreshToken mới vào db
+      account.refreshToken = newRefreshToken;
       await account.save();
 
       // 7. Trả về tokens mới
@@ -231,4 +228,5 @@ export interface JwtPayload {
   accountId: string;
   phone: string;
   role: Types.ObjectId[];
+  user: Types.ObjectId;
 }

@@ -22,4 +22,26 @@ export class UserService {
       );
     }
   }
+  async updateUser(
+    userId: string,
+    dto: Partial<UserDto>,
+  ): Promise<UserDocument> {
+    try {
+      const updatedUser = await this.userModel.findByIdAndUpdate(
+        userId,
+        { $set: dto },
+        { new: true, runValidators: true },
+      );
+
+      if (!updatedUser) {
+        throw new BadRequestException(`Không tìm thấy user với id: ${userId}`);
+      }
+
+      return updatedUser;
+    } catch (error) {
+      throw new BadRequestException(
+        `Cập nhật user thất bại: ${(error as Error).message}`,
+      );
+    }
+  }
 }

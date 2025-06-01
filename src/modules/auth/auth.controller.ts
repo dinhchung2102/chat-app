@@ -37,13 +37,4 @@ export class AuthController {
   refresh(@Body() dto: RefreshTokenDto) {
     return this.authService.refreshTokens(dto);
   }
-
-  // @Post('logout')
-  // async logout(@Body() dto: { accountId: string }) {
-  //   await this.accountModel.findByIdAndUpdate(dto.accountId, {
-  //     refreshToken: null,
-  //     isActive: false,
-  //   });
-  //   return { success: true };
-  // }
 }
