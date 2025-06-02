@@ -14,7 +14,7 @@ import { APP_GUARD } from '@nestjs/core';
       throttlers: [
         {
           ttl: 60000,
-          limit: 3,
+          limit: process.env.NODE_ENV === 'development' ? 9999 : 10,
         },
       ],
     }),
