@@ -12,6 +12,7 @@ import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { Roles } from 'src/common/decorator/roles.decorator';
+import { SendOtpDto } from './dto/email-otp.dto';
 
 @UseFilters(new AllExceptionsFilter())
 @SkipThrottle()
@@ -46,5 +47,12 @@ export class AuthController {
   @Post('refresh')
   refresh(@Body() dto: RefreshTokenDto) {
     return this.authService.refreshTokens(dto);
+  }
+
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @SkipThrottle({ default: false })
+  @Post('send-otp')
+  async sendEmailOTP(@Body() dto: SendOtpDto) {
+    return this.authService.sendEmailOTP(dto.email);
   }
 }

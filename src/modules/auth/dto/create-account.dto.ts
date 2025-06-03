@@ -1,5 +1,12 @@
 import { Type } from 'class-transformer';
-import { IsDate, IsEnum, IsNotEmpty, IsString, Matches } from 'class-validator';
+import {
+  IsDate,
+  IsEmail,
+  IsEnum,
+  IsNotEmpty,
+  IsString,
+  Matches,
+} from 'class-validator';
 import { Types } from 'mongoose';
 import { Gender } from 'src/common/enums/gender.enum';
 import { SettingDto } from 'src/modules/users/dto/setting.dto';
@@ -10,6 +17,9 @@ export class CreateAccountDto {
     message: 'Số điện thoại không hợp lệ',
   })
   phone: string;
+
+  @IsEmail()
+  email: string;
 
   @IsString()
   @IsNotEmpty()

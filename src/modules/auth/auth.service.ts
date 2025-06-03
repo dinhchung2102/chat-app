@@ -20,6 +20,8 @@ import { plainToInstance } from 'class-transformer';
 import { formatPhone } from 'src/shared/utils/formatPhone';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ConfigService } from '@nestjs/config';
+import { MailerService } from '@nestjs-modules/mailer';
+import { generateOTP } from 'src/shared/email/generateOTP';
 
 @Injectable()
 export class AuthService {
@@ -36,6 +38,8 @@ export class AuthService {
     private jwtService: JwtService,
 
     private configService: ConfigService,
+
+    private readonly mailerService: MailerService,
   ) {}
 
   async createNewRole(dto: CreateRoleDto): Promise<RoleDocument> {
@@ -86,6 +90,7 @@ export class AuthService {
 
       const newAccount = new this.accountModel({
         phone: formatPhone(dto.phone),
+        email: dto.email,
         password: hashedPassword,
         //isActive: default-false
         roles: [...(Array.isArray(dto.role) ? dto.role : []), defaultRole._id],
@@ -232,6 +237,29 @@ export class AuthService {
     } catch (error) {
       throw new UnauthorizedException(
         error?.message || 'Token không hợp lệ hoặc đã hết hạn',
+      );
+    }
+  }
+
+  async sendEmailOTP(
+    email: string,
+  ): Promise<{ message: string; otp?: string }> {
+    const otp: string = generateOTP();
+    try {
+      await this.mailerService.sendMail({
+        to: email,
+        subject: `${otp} là mã xác thực của người đẹp trong ứng dụng ChatHiHi`,
+        template: 'otp',
+        context: { otp },
+      });
+
+      return {
+        message: 'OTP đã được gửi tới email của bạn',
+      };
+    } catch (error) {
+      throw new BadRequestException(
+        'Không thể gửi mã OTP. Vui lòng thử lại sau.',
+        error,
       );
     }
   }

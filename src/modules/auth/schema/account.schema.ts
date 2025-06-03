@@ -9,6 +9,9 @@ export class Account {
   phone: string;
 
   @Prop({ required: false })
+  email: string;
+
+  @Prop({ required: false })
   password: string;
 
   @Prop({ default: false })
