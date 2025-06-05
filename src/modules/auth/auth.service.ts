@@ -22,6 +22,7 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ConfigService } from '@nestjs/config';
 import { MailerService } from '@nestjs-modules/mailer';
 import { generateOTP } from 'src/shared/email/generateOTP';
+import { PayloadDto } from './dto/payload-jwt.dto';
 
 @Injectable()
 export class AuthService {
@@ -182,7 +183,7 @@ export class AuthService {
 
     try {
       // 1. Verify token
-      const payload: JwtPayload = this.jwtService.verify(refreshToken, {
+      const payload: PayloadDto = this.jwtService.verify(refreshToken, {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
       });
 
@@ -212,6 +213,7 @@ export class AuthService {
         accountId: account._id,
         phone: account.phone,
         roles: roleNames, // truyền mảng tên role đúng chuẩn
+        userId: account.user,
       };
 
       const newAccessToken = this.jwtService.sign(newPayload, {
@@ -263,11 +265,4 @@ export class AuthService {
       );
     }
   }
-}
-
-export interface JwtPayload {
-  accountId: string;
-  phone: string;
-  roles: string[];
-  user: Types.ObjectId;
 }
