@@ -22,6 +22,7 @@ export class UserService {
       );
     }
   }
+
   async updateUser(
     userId: string,
     dto: Partial<UserDto>,
@@ -41,6 +42,20 @@ export class UserService {
     } catch (error) {
       throw new BadRequestException(
         `Cập nhật user thất bại: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  async getMyProfile(userId: string): Promise<UserDocument | null> {
+    try {
+      const user = this.userModel.findById(userId);
+
+      if (user != null) {
+        return user;
+      } else return null;
+    } catch (error) {
+      throw new BadRequestException(
+        `Lấy thông tin user thất bại: ${(error as Error).message}`,
       );
     }
   }
