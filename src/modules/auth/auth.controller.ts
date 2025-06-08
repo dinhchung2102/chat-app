@@ -19,7 +19,7 @@ import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { Roles } from 'src/common/decorator/roles.decorator';
-import { SendOtpDto } from './dto/email-otp.dto';
+import { SendOtpDto, VerifyOTPDto } from './dto/email-otp.dto';
 import { Response, Request } from 'express';
 
 @UseFilters(new AllExceptionsFilter())
@@ -82,10 +82,22 @@ export class AuthController {
     res.json({ accessToken });
   }
 
-  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @Throttle({ default: { limit: 5, ttl: 5 * 60 * 1000 } })
   @SkipThrottle({ default: false })
   @Post('send-otp')
   async sendEmailOTP(@Body() dto: SendOtpDto) {
     return this.authService.sendEmailOTP(dto.email);
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 5 * 60 * 1000 } })
+  @SkipThrottle({ default: false })
+  @Post('resend-otp')
+  async resendEmailOTP(@Body() dto: SendOtpDto) {
+    return this.authService.resendEmailOTP(dto.email);
+  }
+
+  @Post('verify-otp')
+  async verifyEmailOTP(@Body() dto: VerifyOTPDto) {
+    return this.authService.verifyEmailOTP(dto);
   }
 }

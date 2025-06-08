@@ -23,6 +23,9 @@ import { ConfigService } from '@nestjs/config';
 import { MailerService } from '@nestjs-modules/mailer';
 import { generateOTP } from 'src/shared/email/generateOTP';
 import { PayloadDto } from './dto/payload-jwt.dto';
+import { RedisService } from 'src/shared/redis/redis.service';
+import { OTPDto } from 'src/shared/redis/otp.dto';
+import { VerifyOTPDto } from './dto/email-otp.dto';
 
 @Injectable()
 export class AuthService {
@@ -41,6 +44,8 @@ export class AuthService {
     private configService: ConfigService,
 
     private readonly mailerService: MailerService,
+
+    private redisService: RedisService,
   ) {}
 
   async createNewRole(dto: CreateRoleDto): Promise<RoleDocument> {
@@ -255,6 +260,11 @@ export class AuthService {
         context: { otp },
       });
 
+      //Set OTP thời hạn 5 phút mặc định vào redis
+      await this.redisService.setOtp(email, otp);
+
+      console.log(await this.redisService.getOtp(email));
+
       return {
         message: 'OTP đã được gửi tới email của bạn',
       };
@@ -263,6 +273,51 @@ export class AuthService {
         'Không thể gửi mã OTP. Vui lòng thử lại sau.',
         error,
       );
+    }
+  }
+
+  async resendEmailOTP(
+    email: string,
+  ): Promise<{ message: string; otp?: string }> {
+    // Sinh OTP mới
+    const otp: string = generateOTP();
+
+    try {
+      // Gửi mail
+      await this.mailerService.sendMail({
+        to: email,
+        subject: `${otp} là mã xác thực của người đẹp trong ứng dụng ChatHiHi`,
+        template: 'otp',
+        context: { otp },
+      });
+
+      // Lưu OTP mới vào Redis, TTL 5 phút
+      await this.redisService.setOtp(email, otp);
+
+      return {
+        message: 'OTP mới đã được gửi đến email của bạn',
+      };
+    } catch (error) {
+      throw new BadRequestException(
+        'Không thể gửi mã OTP. Vui lòng thử lại sau.',
+        error,
+      );
+    }
+  }
+
+  async verifyEmailOTP(
+    dto: VerifyOTPDto,
+  ): Promise<{ message: string; success: boolean }> {
+    const { email, authOTP } = dto;
+    const otpRedis = await this.redisService.getOtp(email);
+
+    if (otpRedis && otpRedis.otp === authOTP) {
+      return {
+        message: 'OTP đã được xác thực thành công',
+        success: true,
+      };
+    } else {
+      throw new BadRequestException('OTP hết hạn hoặc không hợp lệ');
     }
   }
 }
