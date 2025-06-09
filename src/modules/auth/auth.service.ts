@@ -85,13 +85,11 @@ export class AuthService {
   }
 
   async createNewAccount(dto: CreateAccountDto): Promise<AccountDocument> {
-    await this.verifyEmailOTP({
-      email: dto.email,
-      authOTP: dto.authOTP,
-    });
     try {
       const defaultRole = await this.getRoleByName('user');
-      const existPhone = await this.accountModel.findOne({ phone: dto.phone });
+      const existPhone = await this.accountModel.findOne({
+        phone: formatPhone(dto.phone),
+      });
       const existEmail = await this.accountModel.findOne({ email: dto.email });
 
       if (existPhone) {
@@ -103,11 +101,15 @@ export class AuthService {
       if (existEmail) {
         throw new ConflictException({
           message: `Email đã được sử dụng`,
-          errorCode: 'PHONE_EXISTS',
+          errorCode: 'EMAIL_EXISTS',
         });
       }
 
-      //chưa xử lý: kiểm tra account trước khi create user
+      await this.verifyEmailOTP({
+        email: dto.email,
+        authOTP: dto.authOTP,
+      });
+
       const user = await this.userModel.create({
         fullName: dto.fullName,
         avatar: dto.avatar,

@@ -7,8 +7,10 @@ import {
   Res,
   Req,
   UnauthorizedException,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
-import { AuthService } from '../auth/auth.service';
+import { AuthService } from './auth.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { RoleDocument } from './schema/role.schema';
 import { AllExceptionsFilter } from 'src/common/filters/http-exception.filter';
@@ -21,6 +23,25 @@ import { RolesGuard } from './guards/roles.guard';
 import { Roles } from 'src/common/decorator/roles.decorator';
 import { SendOtpDto, VerifyOTPDto } from './dto/email-otp.dto';
 import { Response, Request } from 'express';
+import { AccountDto } from './dto/account.dto';
+
+const THROTTLE_TTL = 5 * 60 * 1000; // 5 minutes
+const THROTTLE_LIMIT = 5;
+
+interface LoginResponse {
+  success: boolean;
+  data: {
+    accessToken: string;
+    account: AccountDto;
+  };
+}
+
+interface RefreshResponse {
+  success: boolean;
+  data: {
+    accessToken: string;
+  };
+}
 
 @UseFilters(new AllExceptionsFilter())
 @SkipThrottle()
@@ -31,22 +52,29 @@ export class AuthController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @Post('create/new-role')
+  @HttpCode(HttpStatus.CREATED)
   async createNewRole(@Body() dto: CreateRoleDto): Promise<RoleDocument> {
     return await this.authService.createNewRole(dto);
   }
 
-  @SkipThrottle({ default: true })
+  @SkipThrottle({ default: false })
+  @Throttle({ default: { limit: THROTTLE_LIMIT, ttl: THROTTLE_TTL } })
   @Post('create/new-account')
+  @HttpCode(HttpStatus.CREATED)
   async createNewAccount(
     @Body() dto: CreateAccountDto,
   ): Promise<AccountDocument> {
     return await this.authService.createNewAccount(dto);
   }
 
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Throttle({ default: { limit: THROTTLE_LIMIT, ttl: THROTTLE_TTL } })
   @SkipThrottle({ default: false })
   @Post('login')
-  async loginUser(@Body() dto: LoginDto, @Res() res: Response): Promise<void> {
+  @HttpCode(HttpStatus.OK)
+  async loginUser(
+    @Body() dto: LoginDto,
+    @Res() res: Response<LoginResponse>,
+  ): Promise<void> {
     const { accessToken, refreshToken, account } =
       await this.authService.loginUser(dto);
 
@@ -55,15 +83,19 @@ export class AuthController {
       secure: true,
       sameSite: 'strict',
       path: '/auth/refresh',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
-    res.json({ accessToken, account });
+    res.json({ success: true, data: { accessToken, account } });
   }
 
   @Post('refresh')
-  async refreshToken(@Req() req: Request, @Res() res: Response) {
-    const refreshToken = req.cookies['refreshToken'];
+  @HttpCode(HttpStatus.OK)
+  async refreshToken(
+    @Req() req: Request,
+    @Res() res: Response<RefreshResponse>,
+  ): Promise<void> {
+    const refreshToken = req.cookies['refreshToken'] as string;
     if (!refreshToken) {
       throw new UnauthorizedException('Thiếu refresh token');
     }
@@ -76,27 +108,30 @@ export class AuthController {
       secure: true,
       sameSite: 'strict',
       path: '/auth/refresh',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
-    res.json({ accessToken });
+    res.json({ success: true, data: { accessToken } });
   }
 
-  @Throttle({ default: { limit: 5, ttl: 5 * 60 * 1000 } })
+  @Throttle({ default: { limit: THROTTLE_LIMIT, ttl: THROTTLE_TTL } })
   @SkipThrottle({ default: false })
   @Post('send-otp')
+  @HttpCode(HttpStatus.OK)
   async sendEmailOTP(@Body() dto: SendOtpDto) {
     return this.authService.sendEmailOTP(dto.email);
   }
 
-  @Throttle({ default: { limit: 5, ttl: 5 * 60 * 1000 } })
+  @Throttle({ default: { limit: THROTTLE_LIMIT, ttl: THROTTLE_TTL } })
   @SkipThrottle({ default: false })
   @Post('resend-otp')
+  @HttpCode(HttpStatus.OK)
   async resendEmailOTP(@Body() dto: SendOtpDto) {
     return this.authService.resendEmailOTP(dto.email);
   }
 
   @Post('verify-otp')
+  @HttpCode(HttpStatus.OK)
   async verifyEmailOTP(@Body() dto: VerifyOTPDto) {
     return this.authService.verifyEmailOTP(dto);
   }
