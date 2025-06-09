@@ -4,6 +4,7 @@ import {
   ArgumentsHost,
   HttpException,
   HttpStatus,
+  ForbiddenException,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ThrottlerException } from '@nestjs/throttler';
@@ -30,6 +31,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
       if (exception instanceof ThrottlerException) {
         message = 'Quá nhiều yêu cầu. Vui lòng thử lại sau';
         errorCode = 'TOO_MANY_REQUESTS';
+      } else if (exception instanceof ForbiddenException) {
+        message = `Bạn không đủ quyền để thực hiện hành động này`;
+        errorCode = 'FORBIDDEN_RESOURCE';
       } else {
         const exceptionResponse = exception.getResponse();
         if (typeof exceptionResponse === 'string') {
