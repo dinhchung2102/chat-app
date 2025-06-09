@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { Role, RoleDocument } from './schema/role.schema';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model } from 'mongoose';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { Account, AccountDocument } from './schema/account.schema';
@@ -24,7 +24,6 @@ import { MailerService } from '@nestjs-modules/mailer';
 import { generateOTP } from 'src/shared/email/generateOTP';
 import { PayloadDto } from './dto/payload-jwt.dto';
 import { RedisService } from 'src/shared/redis/redis.service';
-import { OTPDto } from 'src/shared/redis/otp.dto';
 import { VerifyOTPDto } from './dto/email-otp.dto';
 
 @Injectable()
@@ -80,8 +79,29 @@ export class AuthService {
   }
 
   async createNewAccount(dto: CreateAccountDto): Promise<AccountDocument> {
+    await this.verifyEmailOTP({
+      email: dto.email,
+      authOTP: dto.authOTP,
+    });
     try {
       const defaultRole = await this.getRoleByName('user');
+      const existPhone = await this.accountModel.findOne({ phone: dto.phone });
+      const existEmail = await this.accountModel.findOne({ email: dto.email });
+
+      if (existPhone) {
+        throw new ConflictException({
+          message: `Số điện thoại đã được sử dụng`,
+          errorCode: 'PHONE_EXISTS',
+        });
+      }
+      if (existEmail) {
+        throw new ConflictException({
+          message: `Email đã được sử dụng`,
+          errorCode: 'PHONE_EXISTS',
+        });
+      }
+
+      //chưa xử lý: kiểm tra account trước khi create user
       const user = await this.userModel.create({
         fullName: dto.fullName,
         avatar: dto.avatar,
@@ -105,7 +125,6 @@ export class AuthService {
 
       return await newAccount.save();
     } catch (error) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       if (error.code === 11000) {
         throw new ConflictException({
           message: `Tài khoản đã tồn tại`,
@@ -252,6 +271,14 @@ export class AuthService {
     email: string,
   ): Promise<{ message: string; otp?: string }> {
     const otp: string = generateOTP();
+    const existEmail = await this.accountModel.findOne({ email: email });
+    if (existEmail) {
+      throw new ConflictException({
+        message: `Email đã được sử dụng`,
+        errorCode: 'EMAIL_EXISTS',
+      });
+    }
+
     try {
       await this.mailerService.sendMail({
         to: email,
@@ -262,8 +289,6 @@ export class AuthService {
 
       //Set OTP thời hạn 5 phút mặc định vào redis
       await this.redisService.setOtp(email, otp);
-
-      console.log(await this.redisService.getOtp(email));
 
       return {
         message: 'OTP đã được gửi tới email của bạn',
@@ -312,6 +337,7 @@ export class AuthService {
     const otpRedis = await this.redisService.getOtp(email);
 
     if (otpRedis && otpRedis.otp === authOTP) {
+      await this.redisService.delete(`otp:${email}`);
       return {
         message: 'OTP đã được xác thực thành công',
         success: true,

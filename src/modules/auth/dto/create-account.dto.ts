@@ -41,4 +41,8 @@ export class CreateAccountDto {
   dateOfBirth: Date;
   bio: string;
   settings: SettingDto;
+
+  @IsString()
+  @IsNotEmpty()
+  authOTP: string;
 }

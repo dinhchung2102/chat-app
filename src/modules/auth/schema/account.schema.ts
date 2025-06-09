@@ -8,7 +8,7 @@ export class Account {
   @Prop({ required: true, unique: true })
   phone: string;
 
-  @Prop({ required: false })
+  @Prop({ required: false, unique: true })
   email: string;
 
   @Prop({ required: false })
