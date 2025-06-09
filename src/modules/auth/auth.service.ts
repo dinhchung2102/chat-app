@@ -1,7 +1,8 @@
 import {
-  BadRequestException,
   ConflictException,
+  HttpException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -49,6 +50,15 @@ export class AuthService {
 
   async createNewRole(dto: CreateRoleDto): Promise<RoleDocument> {
     try {
+      const existRole = await this.roleModel.findOne({
+        roleName: dto.roleName,
+      });
+      if (existRole) {
+        throw new ConflictException({
+          message: `roleName:${dto.roleName} đã tồn tại`,
+          errorCode: 'ROLENAME_EXISTS',
+        });
+      }
       const newRole = new this.roleModel({
         roleName: dto.roleName,
         description: dto.description,
@@ -57,15 +67,11 @@ export class AuthService {
 
       return await newRole.save();
     } catch (error) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      if (error.code === 11000) {
-        throw new ConflictException({
-          message: `roleName:${dto.roleName} đã tồn tại`,
-          errorCode: 'ROLENAME_EXISTS',
-        });
+      if (error instanceof HttpException) {
+        throw error;
       }
-      throw new BadRequestException(
-        `Tạo role thất bại: ${(error as Error).message}`,
+      throw new InternalServerErrorException(
+        'Không thể đăng nhập, vui lòng thử lại sau',
       );
     }
   }
@@ -73,7 +79,7 @@ export class AuthService {
   async getRoleByName(roleName: string): Promise<RoleDocument> {
     const role = await this.roleModel.findOne({ roleName }).exec();
     if (!role) {
-      throw new BadRequestException(`Không tìm thấy role với tên: ${roleName}`);
+      throw new NotFoundException(`Không tìm thấy role với tên: ${roleName}`);
     }
     return role;
   }
@@ -125,17 +131,15 @@ export class AuthService {
 
       return await newAccount.save();
     } catch (error) {
-      if (error.code === 11000) {
-        throw new ConflictException({
-          message: `Tài khoản đã tồn tại`,
-          errorCode: 'EXISTS',
-        });
+      if (error instanceof HttpException) {
+        throw error;
       }
-      throw new BadRequestException(
-        `Tạo tài khoản thất bại: ${(error as Error).message}`,
+      throw new InternalServerErrorException(
+        'Không thể tạo mới tài khoản, vui lòng thử lại sau',
       );
     }
   }
+
   async loginUser(dto: LoginDto): Promise<{
     accessToken: string;
     refreshToken: string;
@@ -144,14 +148,14 @@ export class AuthService {
     try {
       const account = await this.accountModel
         .findOne({ phone: formatPhone(dto.phone) })
-        .populate('roles');
+        .populate<{ roles: RoleDocument[] }>('roles');
 
       if (!account) throw new NotFoundException('Tài khoản không tồn tại');
 
       const isMatch = await bcrypt.compare(dto.password, account.password);
       if (!isMatch) throw new UnauthorizedException('Mật khẩu không đúng');
 
-      const roleNames = account.roles.map((role: any) => role.roleName);
+      const roleNames = account.roles.map((role) => role.roleName);
 
       const payload = {
         accountId: account._id,
@@ -181,12 +185,14 @@ export class AuthService {
           'Không thể đăng nhập tài khoản lúc này, vui lòng thử lại',
         );
 
+      // Convert dữ liệu Mongoose sang DTO (loại bỏ các field không cần expose ra ngoài, như password,...).
       const populatedAccount = await activeAccount.populate('user');
-
       const accountDto = plainToInstance(
         AccountDto,
         populatedAccount.toObject(),
-        { excludeExtraneousValues: true },
+        {
+          excludeExtraneousValues: true,
+        },
       );
 
       return {
@@ -195,8 +201,12 @@ export class AuthService {
         account: accountDto,
       };
     } catch (error) {
-      console.error('Lỗi loginUser:', error);
-      throw error;
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Không thể đăng nhập, vui lòng thử lại sau',
+      );
     }
   }
 
@@ -206,37 +216,30 @@ export class AuthService {
     const { refreshToken } = dto;
 
     try {
-      // 1. Verify token
       const payload: PayloadDto = this.jwtService.verify(refreshToken, {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
       });
 
-      // 2. Tìm tài khoản theo payload.accountId
       const account = await this.accountModel
         .findById(payload.accountId)
-        .populate('roles');
-      if (!account || !account.refreshToken) {
+        .populate<{ roles: RoleDocument[] }>('roles');
+      if (
+        !account ||
+        !account.refreshToken ||
+        refreshToken != account.refreshToken
+      ) {
         throw new UnauthorizedException(
           'Refresh token không hợp lệ hoặc đã hết hạn',
         );
       }
 
-      // 3. So sánh refreshToken client gửi với refreshToken trong db
-      if (refreshToken != account.refreshToken) {
-        throw new UnauthorizedException(
-          'Refresh token không hợp lệ hoặc đã hết hạn',
-        );
-      }
-
-      // 4. Tạo accessToken mới
-      const roleNames = account.roles
-        .filter((role: any) => role && role.roleName) // đảm bảo role và role.name hợp lệ
-        .map((role: any) => role.roleName);
+      // Tạo accessToken mới
+      const roleNames = account.roles.map((role) => role.roleName);
 
       const newPayload = {
         accountId: account._id,
         phone: account.phone,
-        roles: roleNames, // truyền mảng tên role đúng chuẩn
+        roles: roleNames,
         userId: account.user,
       };
 
@@ -245,24 +248,26 @@ export class AuthService {
         expiresIn: '15m',
       });
 
-      // 5. Tạo refreshToken mới (tuỳ chọn)
+      // Tạo refreshToken mới
       const newRefreshToken = this.jwtService.sign(newPayload, {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
         expiresIn: '7d',
       });
 
-      // 6.lưu refreshToken mới vào db
+      // lưu refreshToken mới vào db
       account.refreshToken = newRefreshToken;
       await account.save();
 
-      // 7. Trả về tokens mới
       return {
         accessToken: newAccessToken,
         refreshToken: newRefreshToken,
       };
     } catch (error) {
-      throw new UnauthorizedException(
-        error?.message || 'Token không hợp lệ hoặc đã hết hạn',
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Không thể đăng nhập, vui lòng thử lại sau',
       );
     }
   }
@@ -294,9 +299,11 @@ export class AuthService {
         message: 'OTP đã được gửi tới email của bạn',
       };
     } catch (error) {
-      throw new BadRequestException(
-        'Không thể gửi mã OTP. Vui lòng thử lại sau.',
-        error,
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Không thể đăng nhập, vui lòng thử lại sau',
       );
     }
   }
@@ -323,9 +330,11 @@ export class AuthService {
         message: 'OTP mới đã được gửi đến email của bạn',
       };
     } catch (error) {
-      throw new BadRequestException(
-        'Không thể gửi mã OTP. Vui lòng thử lại sau.',
-        error,
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Không thể đăng nhập, vui lòng thử lại sau',
       );
     }
   }
@@ -343,7 +352,7 @@ export class AuthService {
         success: true,
       };
     } else {
-      throw new BadRequestException('OTP hết hạn hoặc không hợp lệ');
+      throw new UnauthorizedException('OTP hết hạn hoặc không hợp lệ');
     }
   }
 }

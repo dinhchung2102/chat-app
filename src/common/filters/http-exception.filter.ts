@@ -6,6 +6,12 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { ThrottlerException } from '@nestjs/throttler';
+
+interface ExceptionResponse {
+  message: string | string[] | Record<string, any>;
+  errorCode?: string;
+}
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -15,29 +21,33 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const request = ctx.getRequest<Request>();
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
-    let message = 'Internal server error';
+    let message = 'Lỗi máy chủ nội bộ';
     let errorCode = 'INTERNAL_ERROR';
 
-    // Nếu là HttpException (BadRequestException, NotFoundException, ...)
     if (exception instanceof HttpException) {
       status = exception.getStatus();
 
-      const exceptionResponse = exception.getResponse();
-      if (typeof exceptionResponse === 'string') {
-        message = exceptionResponse;
-      } else if (
-        typeof exceptionResponse === 'object' &&
-        exceptionResponse !== null &&
-        'message' in exceptionResponse
-      ) {
-        message =
-          typeof (exceptionResponse as any).message === 'string'
-            ? (exceptionResponse as any).message
-            : JSON.stringify((exceptionResponse as any).message);
+      if (exception instanceof ThrottlerException) {
+        message = 'Quá nhiều yêu cầu. Vui lòng thử lại sau';
+        errorCode = 'TOO_MANY_REQUESTS';
+      } else {
+        const exceptionResponse = exception.getResponse();
+        if (typeof exceptionResponse === 'string') {
+          message = exceptionResponse;
+        } else if (
+          typeof exceptionResponse === 'object' &&
+          exceptionResponse !== null &&
+          'message' in exceptionResponse
+        ) {
+          const typedResponse = exceptionResponse as ExceptionResponse;
+          message =
+            typeof typedResponse.message === 'string'
+              ? typedResponse.message
+              : JSON.stringify(typedResponse.message);
 
-        // Có thể lấy thêm custom errorCode nếu có
-        if ('errorCode' in exceptionResponse) {
-          errorCode = (exceptionResponse as any).errorCode;
+          if (typedResponse.errorCode) {
+            errorCode = typedResponse.errorCode;
+          }
         }
       }
     }
