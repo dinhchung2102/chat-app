@@ -38,12 +38,14 @@
     "cookie-parser": "^1.4.7",
     "keyv": "^5.3.3",
     "mongodb": "^6.16.0",
+    "nest-winston": "^1.10.2",
     "nodemailer": "^7.0.3",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "winston": "^3.17.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

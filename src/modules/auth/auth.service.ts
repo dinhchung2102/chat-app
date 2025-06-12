@@ -1,8 +1,10 @@
 import {
   ConflictException,
   HttpException,
+  Inject,
   Injectable,
   InternalServerErrorException,
+  LoggerService,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -26,6 +28,7 @@ import { generateOTP } from 'src/shared/email/generateOTP';
 import { PayloadDto } from './dto/payload-jwt.dto';
 import { RedisService } from 'src/shared/redis/redis.service';
 import { VerifyOTPDto } from './dto/email-otp.dto';
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 
 @Injectable()
 export class AuthService {
@@ -46,6 +49,9 @@ export class AuthService {
     private readonly mailerService: MailerService,
 
     private redisService: RedisService,
+
+    @Inject(WINSTON_MODULE_NEST_PROVIDER)
+    private readonly logger: LoggerService,
   ) {}
 
   async createNewRole(dto: CreateRoleDto): Promise<RoleDocument> {
@@ -155,8 +161,14 @@ export class AuthService {
       if (!account) throw new NotFoundException('Tài khoản không tồn tại');
 
       const isMatch = await bcrypt.compare(dto.password, account.password);
-      if (!isMatch) throw new UnauthorizedException('Mật khẩu không đúng');
-
+      if (!isMatch) {
+        this.logger.error(
+          `Bro: ${account.phone} nhập sai mật khẩu`,
+          undefined,
+          AuthService.name,
+        );
+        throw new UnauthorizedException('Mật khẩu không đúng');
+      }
       const roleNames = account.roles.map((role) => role.roleName);
 
       const payload = {
@@ -187,7 +199,7 @@ export class AuthService {
           'Không thể đăng nhập tài khoản lúc này, vui lòng thử lại',
         );
 
-      // Convert dữ liệu Mongoose sang DTO (loại bỏ các field không cần expose ra ngoài, như password,...).
+      // Convert dữ liệu Mongoose sang DTO
       const populatedAccount = await activeAccount.populate('user');
       const accountDto = plainToInstance(
         AccountDto,
