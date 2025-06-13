@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { User, UserDocument } from './schema/user.schema';
 import { Model } from 'mongoose';
@@ -46,13 +50,15 @@ export class UserService {
     }
   }
 
-  async getMyProfile(userId: string): Promise<UserDocument | null> {
+  async getMyProfile(
+    userId: string,
+  ): Promise<{ message: string; user: UserDocument } | null> {
     try {
-      const user = this.userModel.findById(userId);
+      const userDoc = await this.userModel.findById(userId);
+      if (!userDoc) throw new NotFoundException('Người dùng không tồn tại');
 
-      if (user != null) {
-        return user;
-      } else return null;
+      const user = userDoc.toObject();
+      return { message: 'Lấy thông tin cá nhân thành công', user };
     } catch (error) {
       throw new BadRequestException(
         `Lấy thông tin user thất bại: ${(error as Error).message}`,

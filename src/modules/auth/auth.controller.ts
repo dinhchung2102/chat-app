@@ -17,35 +17,18 @@ import { RoleDocument } from './schema/role.schema';
 import { AllExceptionsFilter } from 'src/common/filters/http-exception.filter';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { LoginDto } from './dto/login.dto';
-import { AccountDocument } from './schema/account.schema';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { Roles } from 'src/common/decorator/roles.decorator';
 import { SendOtpDto, VerifyOTPDto } from './dto/email-otp.dto';
 import { Response, Request } from 'express';
-import { AccountDto } from './dto/account.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { PayloadDto } from './dto/payload-jwt.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 
 const THROTTLE_TTL = 5 * 60 * 1000; // 5 minutes
 const THROTTLE_LIMIT = 5;
-
-interface LoginResponse {
-  success: boolean;
-  data: {
-    accessToken: string;
-    account: AccountDto;
-  };
-}
-
-interface RefreshResponse {
-  success: boolean;
-  data: {
-    accessToken: string;
-  };
-}
 
 @UseFilters(new AllExceptionsFilter())
 @SkipThrottle()
@@ -65,10 +48,8 @@ export class AuthController {
   @Throttle({ default: { limit: THROTTLE_LIMIT, ttl: THROTTLE_TTL } })
   @Post('create/new-account')
   @HttpCode(HttpStatus.CREATED)
-  async createNewAccount(
-    @Body() dto: CreateAccountDto,
-  ): Promise<AccountDocument> {
-    return await this.authService.createNewAccount(dto);
+  async createNewAccount(@Body() dto: CreateAccountDto) {
+    return this.authService.createNewAccount(dto);
   }
 
   @Throttle({ default: { limit: THROTTLE_LIMIT, ttl: THROTTLE_TTL } })
@@ -77,28 +58,32 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async loginUser(
     @Body() dto: LoginDto,
-    @Res() res: Response<LoginResponse>,
-  ): Promise<void> {
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const { accessToken, refreshToken, account } =
       await this.authService.loginUser(dto);
 
+    // Gán cookie nhưng vẫn để Interceptor xử lý response
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: true,
       sameSite: 'strict',
       path: '/auth/refresh',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
     });
 
-    res.json({ success: true, data: { accessToken, account } });
+    return {
+      message: 'Đăng nhập thành công',
+      accessToken,
+      account,
+    };
   }
-
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   async refreshToken(
     @Req() req: Request,
-    @Res() res: Response<RefreshResponse>,
-  ): Promise<void> {
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const refreshToken = req.cookies['refreshToken'] as string;
     if (!refreshToken) {
       throw new UnauthorizedException('Thiếu refresh token');
@@ -112,10 +97,13 @@ export class AuthController {
       secure: true,
       sameSite: 'strict',
       path: '/auth/refresh',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
     });
 
-    res.json({ success: true, data: { accessToken } });
+    return {
+      message: 'Access token đã được làm mới',
+      accessToken,
+    };
   }
 
   @Throttle({ default: { limit: THROTTLE_LIMIT, ttl: THROTTLE_TTL } })

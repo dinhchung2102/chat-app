@@ -92,7 +92,7 @@ export class AuthService {
     return role;
   }
 
-  async createNewAccount(dto: CreateAccountDto): Promise<AccountDocument> {
+  async createNewAccount(dto: CreateAccountDto): Promise<{ message: string }> {
     try {
       const defaultRole = await this.getRoleByName('user');
       const existPhone = await this.accountModel.findOne({
@@ -139,7 +139,10 @@ export class AuthService {
         user: user._id,
       });
 
-      return await newAccount.save();
+      await newAccount.save();
+      return {
+        message: 'Tài khoản đã được tạo thành công',
+      };
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -151,6 +154,7 @@ export class AuthService {
   }
 
   async loginUser(dto: LoginDto): Promise<{
+    message: string;
     accessToken: string;
     refreshToken: string;
     account: AccountDto;
@@ -202,16 +206,21 @@ export class AuthService {
         );
 
       // Convert dữ liệu Mongoose sang DTO
-      const populatedAccount = await activeAccount.populate('user');
-      const accountDto = plainToInstance(
-        AccountDto,
-        populatedAccount.toObject(),
-        {
-          excludeExtraneousValues: true,
-        },
-      );
+      const populatedAccount = await (
+        await activeAccount.populate('user')
+      ).populate({
+        path: 'roles',
+        select: 'roleName -_id',
+      });
+      const accountObj = populatedAccount.toObject();
 
+      accountObj.roles = (accountObj.roles || []).map((r: any) => r.roleName);
+
+      const accountDto = plainToInstance(AccountDto, accountObj, {
+        excludeExtraneousValues: true,
+      });
       return {
+        message: 'Đăng nhập thành công',
         accessToken,
         refreshToken,
         account: accountDto,
@@ -228,7 +237,7 @@ export class AuthService {
 
   async refreshTokens(
     dto: RefreshTokenDto,
-  ): Promise<{ accessToken: string; refreshToken: string }> {
+  ): Promise<{ message: string; accessToken: string; refreshToken: string }> {
     const { refreshToken } = dto;
 
     try {
@@ -275,6 +284,7 @@ export class AuthService {
       await account.save();
 
       return {
+        message: 'Refresh token đã được cập nhật thành công',
         accessToken: newAccessToken,
         refreshToken: newRefreshToken,
       };
@@ -288,9 +298,7 @@ export class AuthService {
     }
   }
 
-  async sendEmailOTP(
-    email: string,
-  ): Promise<{ message: string; otp?: string }> {
+  async sendEmailOTP(email: string): Promise<{ message: string }> {
     const otp: string = generateOTP();
     const existEmail = await this.accountModel.findOne({ email: email });
     if (existEmail) {
@@ -312,7 +320,7 @@ export class AuthService {
       await this.redisService.setOtp(email, otp);
 
       return {
-        message: 'OTP đã được gửi tới email của bạn',
+        message: 'OTP đăng ký tài khoản đã được gửi tới email của bạn',
       };
     } catch (error) {
       if (error instanceof HttpException) {
@@ -324,9 +332,7 @@ export class AuthService {
     }
   }
 
-  async resendEmailOTP(
-    email: string,
-  ): Promise<{ message: string; otp?: string }> {
+  async resendEmailOTP(email: string): Promise<{ message: string }> {
     // Sinh OTP mới
     const otp: string = generateOTP();
 
@@ -355,9 +361,7 @@ export class AuthService {
     }
   }
 
-  async verifyEmailOTP(
-    dto: VerifyOTPDto,
-  ): Promise<{ message: string; success: boolean }> {
+  async verifyEmailOTP(dto: VerifyOTPDto): Promise<{ message: string }> {
     const { email, authOTP } = dto;
     const otpRedis = await this.redisService.getOtp(email);
 
@@ -365,7 +369,6 @@ export class AuthService {
       await this.redisService.delete(`otp:${email}`);
       return {
         message: 'OTP đã được xác thực thành công',
-        success: true,
       };
     } else {
       throw new UnauthorizedException('OTP hết hạn hoặc không hợp lệ');
