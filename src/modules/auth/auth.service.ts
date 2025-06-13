@@ -423,4 +423,25 @@ export class AuthService {
       message: 'Mật khẩu đã được lấy lại thành công',
     };
   }
+
+  async changePassword(
+    accountId: string,
+    newPassword: string,
+  ): Promise<{ message: string }> {
+    const account = await this.accountModel.findOne({ _id: accountId });
+    if (!account) {
+      throw new NotFoundException({
+        message: `Tài khoản không tồn tại`,
+        errorCode: 'ACCOUNT_NOT_FOUND',
+      });
+    }
+    const saltRounds = this.hashRound;
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+    account.password = hashedPassword;
+
+    await account.save();
+    return {
+      message: 'Mật khẩu đã được thay đổi thành công',
+    };
+  }
 }

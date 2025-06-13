@@ -3,4 +3,6 @@ export class PayloadDto {
   phone: string;
   roles: string[];
   userId: string;
+  iat: number;
+  exp: number;
 }
