@@ -9,6 +9,7 @@ import {
   UnauthorizedException,
   HttpCode,
   HttpStatus,
+  Put,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { CreateRoleDto } from './dto/create-role.dto';
@@ -24,6 +25,7 @@ import { Roles } from 'src/common/decorator/roles.decorator';
 import { SendOtpDto, VerifyOTPDto } from './dto/email-otp.dto';
 import { Response, Request } from 'express';
 import { AccountDto } from './dto/account.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 const THROTTLE_TTL = 5 * 60 * 1000; // 5 minutes
 const THROTTLE_LIMIT = 5;
@@ -134,5 +136,17 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async verifyEmailOTP(@Body() dto: VerifyOTPDto) {
     return this.authService.verifyEmailOTP(dto);
+  }
+
+  @Post('request-reset-password')
+  @HttpCode(HttpStatus.OK)
+  async requestResetPassword(@Body() dto: SendOtpDto) {
+    return this.authService.requestResetPassword(dto.email);
+  }
+
+  @Put('reset-password')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto);
   }
 }

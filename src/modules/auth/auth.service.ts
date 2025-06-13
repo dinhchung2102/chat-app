@@ -29,9 +29,11 @@ import { PayloadDto } from './dto/payload-jwt.dto';
 import { RedisService } from 'src/shared/redis/redis.service';
 import { VerifyOTPDto } from './dto/email-otp.dto';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Injectable()
 export class AuthService {
+  private readonly hashRound: number = 10;
   constructor(
     @InjectModel(Role.name)
     private roleModel: Model<RoleDocument>,
@@ -125,7 +127,7 @@ export class AuthService {
         bio: dto.bio,
       });
 
-      const saltRounds = 10;
+      const saltRounds = this.hashRound;
       const hashedPassword = await bcrypt.hash(dto.password, saltRounds);
 
       const newAccount = new this.accountModel({
@@ -368,5 +370,57 @@ export class AuthService {
     } else {
       throw new UnauthorizedException('OTP hết hạn hoặc không hợp lệ');
     }
+  }
+
+  async requestResetPassword(email: string): Promise<{ message: string }> {
+    const otp: string = generateOTP();
+
+    try {
+      const existEmail = await this.accountModel.findOne({ email: email });
+      if (!existEmail) {
+        throw new NotFoundException({
+          message: `Tài khoản không tồn tại`,
+          errorCode: 'ACCOUNT_NOT_FOUND',
+        });
+      }
+      //Set OTP thời hạn 5 phút mặc định vào redis
+      await this.redisService.setOtp(email, otp);
+      await this.mailerService.sendMail({
+        to: email,
+        subject: `${otp} là mã lấy lại mật khẩu của người đẹp trong ứng dụng ChatHiHi`,
+        template: 'reset-password',
+        context: { otp },
+      });
+
+      return {
+        message: 'OTP lấy lại mật khẩu đã được gửi tới email của bạn',
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Không thể đăng nhập, vui lòng thử lại sau',
+      );
+    }
+  }
+
+  async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
+    const { email, authOTP, newPassword } = dto;
+    const account = await this.accountModel.findOne({ email: email });
+    if (!account) {
+      throw new NotFoundException({
+        message: `Tài khoản không tồn tại`,
+        errorCode: 'ACCOUNT_NOT_FOUND',
+      });
+    }
+    await this.verifyEmailOTP({ email, authOTP });
+    const saltRounds = this.hashRound;
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+    account.password = hashedPassword;
+    await account.save();
+    return {
+      message: 'Mật khẩu đã được lấy lại thành công',
+    };
   }
 }
