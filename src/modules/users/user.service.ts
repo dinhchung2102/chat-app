@@ -30,7 +30,7 @@ export class UserService {
   async updateUser(
     userId: string,
     dto: Partial<UserDto>,
-  ): Promise<UserDocument> {
+  ): Promise<{ message: string; user: UserDocument }> {
     try {
       const updatedUser = await this.userModel.findByIdAndUpdate(
         userId,
@@ -42,7 +42,10 @@ export class UserService {
         throw new BadRequestException(`Không tìm thấy user với id: ${userId}`);
       }
 
-      return updatedUser;
+      return {
+        message: 'Cập nhật người dùng thành công',
+        user: updatedUser,
+      };
     } catch (error) {
       throw new BadRequestException(
         `Cập nhật user thất bại: ${(error as Error).message}`,
