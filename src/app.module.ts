@@ -10,6 +10,8 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handleba
 import { RedisModule } from './shared/redis/redis.module';
 import { WinstonModule } from 'nest-winston';
 import * as winston from 'winston';
+import { RelationshipsModule } from './modules/relationships/relationships.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -82,6 +84,7 @@ import * as winston from 'winston';
 
     AuthModule,
     UserModule,
+    RelationshipsModule,
     RedisModule,
   ],
 

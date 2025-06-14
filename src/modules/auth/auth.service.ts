@@ -447,4 +447,17 @@ export class AuthService {
       message: 'Mật khẩu đã được thay đổi thành công',
     };
   }
+
+  async getAccountProfile(
+    accountId: string,
+  ): Promise<{ message: string; account: AccountDocument }> {
+    const account = await this.accountModel.findById(accountId);
+    if (!account) {
+      throw new NotFoundException({
+        message: `Tài khoản không tồn tại`,
+        errorCode: 'ACCOUNT_NOT_FOUND',
+      });
+    }
+    return { message: 'Thông tin tài khoản tìm thấy', account };
+  }
 }
