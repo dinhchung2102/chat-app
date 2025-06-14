@@ -451,7 +451,13 @@ export class AuthService {
   async getAccountProfile(
     accountId: string,
   ): Promise<{ message: string; account: AccountDocument }> {
-    const account = await this.accountModel.findById(accountId);
+    const account = await this.accountModel
+      .findById(accountId)
+      .populate({
+        path: 'user',
+        select: 'fullName',
+      })
+      .select('-password');
     if (!account) {
       throw new NotFoundException({
         message: `Tài khoản không tồn tại`,

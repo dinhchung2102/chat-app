@@ -8,6 +8,7 @@ import {
   RelationshipsSchema,
 } from './schema/relationship.schema';
 import { AuthModule } from '../auth';
+import { EventsModule } from 'src/shared/events/events.module';
 @Module({
   imports: [
     MongooseModule.forFeature([
@@ -15,6 +16,7 @@ import { AuthModule } from '../auth';
     ]),
     UserModule,
     AuthModule,
+    EventsModule,
   ],
   controllers: [RelationshipsController],
   providers: [RelationshipsService],

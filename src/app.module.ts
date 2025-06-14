@@ -11,6 +11,7 @@ import { RedisModule } from './shared/redis/redis.module';
 import { WinstonModule } from 'nest-winston';
 import * as winston from 'winston';
 import { RelationshipsModule } from './modules/relationships/relationships.module';
+import { EventsModule } from './shared/events/events.module';
 
 @Module({
   imports: [
@@ -86,6 +87,7 @@ import { RelationshipsModule } from './modules/relationships/relationships.modul
     UserModule,
     RelationshipsModule,
     RedisModule,
+    EventsModule,
   ],
 
   providers: [

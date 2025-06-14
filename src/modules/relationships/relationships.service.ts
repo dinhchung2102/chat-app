@@ -11,12 +11,15 @@ import {
   RelationshipDocument,
 } from './schema/relationship.schema';
 import { AuthService } from '../auth';
+import { EventsGateway } from 'src/shared/events/events.gateway';
+import { NotifyFriendRequestDto } from 'src/shared/events/dto/notify-friend-request.dto';
 
 @Injectable()
 export class RelationshipsService {
   constructor(
     private readonly userService: UserService,
     private readonly authService: AuthService,
+    private readonly eventsGateway: EventsGateway,
     @InjectModel(Relationship.name)
     private relationshipModel: Model<RelationshipDocument>,
   ) {}
@@ -33,30 +36,39 @@ export class RelationshipsService {
       throw new NotFoundException('Người dùng không tồn tại');
     }
 
-    //Relationship tồn tại
     //find 2 chiều actorAccount & targetAccount
     const [relationshipAB, relationshipBA] = await Promise.all([
       this.relationshipModel.findOne({
-        actorAccount: actorAccount.account._id,
-        targetAccount: targetAccount.account._id,
+        actorAccount: actorAccountId,
+        targetAccount: targetAccountId,
       }),
       this.relationshipModel.findOne({
-        actorAccount: targetAccount.account._id,
-        targetAccount: actorAccount.account._id,
+        actorAccount: targetAccountId,
+        targetAccount: actorAccountId,
       }),
     ]);
 
+    //Relationship tồn tại
     if (relationshipAB || relationshipBA) {
       throw new ConflictException(
         `Đã thiết lập mối quan hệ: ${relationshipAB ? relationshipAB.status : relationshipBA?.status}`,
       );
     }
 
+    //Tạo mới relationship: request mặc định status là pending
     const relationship = await this.relationshipModel.create({
-      actorAccount: actorAccount.account._id,
-      targetAccount: targetAccount.account._id,
+      actorAccount: actorAccountId,
+      targetAccount: targetAccountId,
       // status: Relationships.PENDING, //default pending
     });
+
+    const notifyFriendRequestDto: NotifyFriendRequestDto = {
+      userId: targetAccountId,
+      actorName: actorAccount.account.user.fullName || 'Người lạ',
+      relationship: relationship,
+    };
+
+    this.eventsGateway.notifyFriendRequest(notifyFriendRequestDto);
 
     return {
       message: 'Gửi lời mời kết bạn thành công',

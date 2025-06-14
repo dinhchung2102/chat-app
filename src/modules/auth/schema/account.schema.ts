@@ -1,5 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
+import { UserDocument } from 'src/modules/users/schema/user.schema';
+import { RoleDocument } from './role.schema';
 
 export type AccountDocument = Account & Document;
 
@@ -18,10 +20,10 @@ export class Account {
   isActive: boolean;
 
   @Prop({ type: [Types.ObjectId], ref: 'Role' })
-  roles: Types.ObjectId[];
+  roles: RoleDocument[];
 
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
-  user: Types.ObjectId;
+  user: UserDocument;
 
   @Prop()
   refreshToken?: string;
