@@ -1,11 +1,12 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { UserService } from '../users/user.service';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import {
   Relationship,
   RelationshipDocument,
@@ -28,6 +29,10 @@ export class RelationshipsService {
     actorAccountId: string,
     targetAccountId: string,
   ): Promise<{ message: string; relationship: RelationshipDocument }> {
+    if (actorAccountId === targetAccountId) {
+      throw new BadRequestException(`Không thể kết bạn với chính mình`);
+    }
+
     const [actorAccount, targetAccount] = await Promise.all([
       this.authService.getAccountProfile(actorAccountId),
       this.authService.getAccountProfile(targetAccountId),
@@ -57,8 +62,8 @@ export class RelationshipsService {
 
     //Tạo mới relationship: request mặc định status là pending
     const relationship = await this.relationshipModel.create({
-      actorAccount: actorAccountId,
-      targetAccount: targetAccountId,
+      actorAccount: new Types.ObjectId(actorAccountId),
+      targetAccount: new Types.ObjectId(targetAccountId),
       // status: Relationships.PENDING, //default pending
     });
 
