@@ -14,6 +14,8 @@ import {
 import { AuthService } from '../auth';
 import { EventsGateway } from 'src/shared/events/events.gateway';
 import { NotifyFriendRequestDto } from 'src/shared/events/dto/notify-friend-request.dto';
+import { Relationships } from 'src/common/enums/relationships.enum';
+import { NotifyFriendAcceptedDto } from 'src/shared/events/dto/notify-friend-accepted.dto';
 
 @Injectable()
 export class RelationshipsService {
@@ -77,6 +79,50 @@ export class RelationshipsService {
 
     return {
       message: 'Gửi lời mời kết bạn thành công',
+      relationship: relationship,
+    };
+  }
+
+  async acceptFriendRequest(
+    targetAccountId: string,
+    relationshipId: string,
+  ): Promise<{ message: string; relationship: RelationshipDocument }> {
+    const relationship = await this.relationshipModel.findById(relationshipId);
+
+    if (!relationship) {
+      throw new NotFoundException('Mối quan hệ không tồn tại');
+    }
+
+    if (relationship.targetAccount._id != targetAccountId) {
+      throw new BadRequestException(
+        'Bạn không có quyền chấp nhận lời mời kết bạn',
+      );
+    }
+
+    const targetAccount =
+      await this.authService.getAccountProfile(targetAccountId);
+
+    if (relationship.status !== Relationships.PENDING) {
+      throw new BadRequestException(
+        'Mối quan hệ không phải là lời mời kết bạn',
+      );
+    }
+
+    relationship.status = Relationships.ACCEPTED;
+
+    await relationship.save();
+    const notifyFriendAcceptedDto: NotifyFriendAcceptedDto = {
+      userId: (
+        relationship.actorAccount as unknown as Types.ObjectId
+      ).toString(),
+      targetName: targetAccount.account.user.fullName,
+      relationship: relationship,
+    };
+
+    this.eventsGateway.notifyFriendAccepted(notifyFriendAcceptedDto);
+
+    return {
+      message: 'Chấp nhận lời mời kết bạn thành công',
       relationship: relationship,
     };
   }

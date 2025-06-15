@@ -10,6 +10,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { NotifyFriendRequestDto } from './dto/notify-friend-request.dto';
+import { NotifyFriendAcceptedDto } from './dto/notify-friend-accepted.dto';
 
 interface SocketWithAuth extends Socket {
   data: {
@@ -73,6 +74,15 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(`user_${dto.userId}`).emit('friend_request_received', {
       type: 'FRIEND_REQUEST',
       message: `${dto.actorName} đã gửi một lời mời kết bạn`,
+      relationship: dto.relationship,
+      timestamp: new Date(),
+    });
+  }
+
+  notifyFriendAccepted(dto: NotifyFriendAcceptedDto) {
+    this.server.to(`user_${dto.userId}`).emit('friend_request_accepted', {
+      type: 'FRIEND_REQUEST_ACCEPTED',
+      message: `${dto.targetName} đã chấp nhận lời mời kết bạn`,
       relationship: dto.relationship,
       timestamp: new Date(),
     });
