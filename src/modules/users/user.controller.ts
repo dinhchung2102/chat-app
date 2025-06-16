@@ -4,6 +4,7 @@ import {
   Get,
   Post,
   Put,
+  Query,
   Req,
   UseFilters,
   UseGuards,
@@ -16,6 +17,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { SkipThrottle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { PayloadDto } from '../auth/dto/payload-jwt.dto';
+import { FindUserDto } from './dto/find-user.dto';
 
 @UseFilters(new AllExceptionsFilter())
 // @SkipThrottle()   // Các route bên trong controller này sẽ không bị throttling
@@ -41,5 +43,12 @@ export class UserController {
   async getMyProfile(@Req() req: Request) {
     const userProfile: PayloadDto = req.user as PayloadDto;
     return this.userService.getMyProfile(userProfile.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('find-user')
+  async findUser(@Query() query: FindUserDto, @Req() req: Request) {
+    const userProfile: PayloadDto = req.user as PayloadDto;
+    return this.userService.findUser(userProfile.userId, query);
   }
 }
