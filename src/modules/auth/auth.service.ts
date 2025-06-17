@@ -403,7 +403,7 @@ export class AuthService {
         throw error;
       }
       throw new InternalServerErrorException(
-        'Không thể đăng nhập, vui lòng thử lại sau',
+        'Không thể gửi yêu cầu lúc này, vui lòng thử lại sau',
       );
     }
   }
