@@ -16,6 +16,7 @@ import { EventsGateway } from 'src/shared/events/events.gateway';
 import { NotifyFriendRequestDto } from 'src/shared/events/dto/notify-friend-request.dto';
 import { Relationships } from 'src/common/enums/relationships.enum';
 import { NotifyFriendAcceptedDto } from 'src/shared/events/dto/notify-friend-accepted.dto';
+import { AccountDocument } from '../auth/schema/account.schema';
 
 @Injectable()
 export class RelationshipsService {
@@ -124,6 +125,77 @@ export class RelationshipsService {
     return {
       message: 'Chấp nhận lời mời kết bạn thành công',
       relationship: relationship,
+    };
+  }
+
+  async getFriendRequests(
+    targetAccountId: string, //Id của user nhận lời mời kết bạn
+  ): Promise<{ message: string; relationships: RelationshipDocument[] }> {
+    const relationships = await this.relationshipModel
+      .find({
+        targetAccount: new Types.ObjectId(targetAccountId),
+        status: Relationships.PENDING,
+      })
+      .populate({
+        path: 'actorAccount',
+        select: '_id email phone',
+        populate: {
+          path: 'user',
+          select:
+            'fullName gender dateOfBirth avatar backgroundImage bio address',
+        },
+      });
+
+    return {
+      message: 'Lấy danh sách lời mời kết bạn thành công',
+      relationships: relationships,
+    };
+  }
+
+  async getFriends(
+    accountId: string,
+  ): Promise<{ message: string; friendAccounts: AccountDocument[] }> {
+    const relationships = await this.relationshipModel
+      .find({
+        status: Relationships.ACCEPTED,
+        $or: [
+          { actorAccount: new Types.ObjectId(accountId) },
+          { targetAccount: new Types.ObjectId(accountId) },
+        ],
+      })
+      .populate([
+        {
+          path: 'actorAccount',
+          select: '_id email phone user',
+          populate: {
+            path: 'user',
+            select:
+              'fullName gender dateOfBirth avatar backgroundImage bio address',
+          },
+        },
+        {
+          path: 'targetAccount',
+          select: '_id email phone user',
+          populate: {
+            path: 'user',
+            select:
+              'fullName gender dateOfBirth avatar backgroundImage bio address',
+          },
+        },
+      ]);
+
+    const friends = relationships.map((rel) => {
+      // Nếu mình là actor → bạn là target
+      if (rel.actorAccount?._id == accountId.toString()) {
+        return rel.targetAccount;
+      }
+
+      // Ngược lại, mình là target → bạn là actor
+      return rel.actorAccount;
+    });
+    return {
+      message: 'Lấy danh sách bạn bè thành công',
+      friendAccounts: friends,
     };
   }
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import { RelationshipsService } from './relationships.service';
 import { RequestFriendDto } from './dto/request-friend.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -33,6 +33,24 @@ export class RelationshipsController {
     return this.relationshipsService.acceptFriendRequest(
       jwtPayload.accountId,
       acceptRequestFriendDto.relationshipId,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('friend-requests')
+  async getFriendRequests(@Req() req: Request) {
+    const jwtPayload: PayloadDto = req.user as PayloadDto;
+    return this.relationshipsService.getFriendRequests(
+      jwtPayload.accountId.toString(),
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('friends')
+  async getFriends(@Req() req: Request) {
+    const jwtPayload: PayloadDto = req.user as PayloadDto;
+    return this.relationshipsService.getFriends(
+      jwtPayload.accountId.toString(),
     );
   }
 }
