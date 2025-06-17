@@ -5,6 +5,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Request } from 'express';
 import { PayloadDto } from '../auth/dto/payload-jwt.dto';
 import { AcceptFriendDto } from './dto/accept-friend.dto';
+import { UnfriendDto } from './dto/unfriend.dto';
 
 @Controller('relationships')
 export class RelationshipsController {
@@ -51,6 +52,16 @@ export class RelationshipsController {
     const jwtPayload: PayloadDto = req.user as PayloadDto;
     return this.relationshipsService.getFriends(
       jwtPayload.accountId.toString(),
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('unfriend')
+  async unfriend(@Req() req: Request, @Body() unfriendDto: UnfriendDto) {
+    const jwtPayload: PayloadDto = req.user as PayloadDto;
+    return this.relationshipsService.unfriend(
+      jwtPayload.accountId.toString(),
+      unfriendDto.friendAccountId,
     );
   }
 }

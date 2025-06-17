@@ -198,4 +198,31 @@ export class RelationshipsService {
       friendAccounts: friends,
     };
   }
+
+  async unfriend(
+    accountId: string,
+    friendAccountId: string,
+  ): Promise<{ message: string; relationship: RelationshipDocument }> {
+    const relationship = await this.relationshipModel.findOneAndDelete({
+      $or: [
+        {
+          actorAccount: new Types.ObjectId(accountId),
+          targetAccount: new Types.ObjectId(friendAccountId),
+        },
+        {
+          actorAccount: new Types.ObjectId(friendAccountId),
+          targetAccount: new Types.ObjectId(accountId),
+        },
+      ],
+    });
+
+    if (!relationship) {
+      throw new NotFoundException('Mối quan hệ không tồn tại');
+    }
+
+    return {
+      message: 'Hủy kết bạn thành công',
+      relationship: relationship,
+    };
+  }
 }
