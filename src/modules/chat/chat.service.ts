@@ -15,6 +15,10 @@ import { Message, MessageDocument } from './schema/message.schema';
 import { MessageType } from 'src/common/enums/message.type';
 import { MessageStatus } from 'src/common/enums/message.status';
 import { AccountDocument } from '../auth/schema/account.schema';
+import {
+  buildPaginationMeta,
+  PaginationMeta,
+} from 'src/common/helpers/pagination.helpers';
 
 @Injectable()
 export class ChatService {
@@ -62,5 +66,87 @@ export class ChatService {
       seenBy: [new Types.ObjectId(senderId)],
     });
     return { message: 'Đã gửi', messagesent: messageSent };
+  }
+
+  async getConversations(
+    accountId: string,
+    page: number,
+    limit: number,
+  ): Promise<{
+    message: string;
+    conversations: ConversationDocument[];
+    pagination: PaginationMeta;
+  }> {
+    const skip = (page - 1) * limit;
+
+    const total = await this.conversationModel.countDocuments({
+      participants: { $in: [new Types.ObjectId(accountId)] },
+    });
+
+    const conversations = await this.conversationModel
+      .find({
+        participants: { $in: [new Types.ObjectId(accountId)] },
+      })
+      .sort({ updatedAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    // Meta phân trang
+    const meta = buildPaginationMeta(total, page, limit);
+
+    return {
+      message: 'Lấy danh sách cuộc trò chuyện thành công',
+      conversations,
+      pagination: meta,
+    };
+  }
+
+  async getMessagesByConversationId(
+    conversationId: string,
+    accountId: string,
+    page: number,
+    limit: number,
+  ): Promise<{
+    message: string;
+    messages: MessageDocument[];
+    pagination: PaginationMeta;
+  }> {
+    const conversation = await this.conversationModel.findById(conversationId);
+    if (!conversation) {
+      throw new NotFoundException('Cuộc trò chuyện không tồn tại');
+    }
+
+    const isParticipant = conversation.participants.some(
+      (participant: AccountDocument) =>
+        (participant._id as string) == accountId,
+    );
+    if (!isParticipant) {
+      throw new ForbiddenException(
+        'Không có quyền truy cập cuộc trò chuyện này',
+      );
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [total, messages] = await Promise.all([
+      this.messageModel.countDocuments({
+        conversationId: new Types.ObjectId(conversationId),
+      }),
+      this.messageModel
+        .find({
+          conversationId: new Types.ObjectId(conversationId),
+        })
+        .sort({ createdAt: -1 }) // Tin nhắn mới nhất trước
+        .skip(skip)
+        .limit(limit),
+    ]);
+
+    const pagination = buildPaginationMeta(total, page, limit);
+
+    return {
+      message: 'Lấy danh sách tin nhắn thành công',
+      messages,
+      pagination,
+    };
   }
 }
