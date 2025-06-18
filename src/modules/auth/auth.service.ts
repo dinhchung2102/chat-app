@@ -27,7 +27,7 @@ import { MailerService } from '@nestjs-modules/mailer';
 import { generateOTP } from 'src/shared/email/generateOTP';
 import { PayloadDto } from './dto/payload-jwt.dto';
 import { RedisService } from 'src/shared/redis/redis.service';
-import { VerifyOTPDto } from './dto/email-otp.dto';
+import { SendOtpDto, VerifyOTPDto } from './dto/email-otp.dto';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChatService } from '../chat/chat.service';
@@ -301,7 +301,8 @@ export class AuthService {
     }
   }
 
-  async sendEmailOTP(email: string): Promise<{ message: string }> {
+  async sendEmailOTP(dto: SendOtpDto): Promise<{ message: string }> {
+    const { email } = dto;
     const otp: string = generateOTP();
     const existEmail = await this.accountModel.findOne({ email: email });
     if (existEmail) {
@@ -335,7 +336,8 @@ export class AuthService {
     }
   }
 
-  async resendEmailOTP(email: string): Promise<{ message: string }> {
+  async resendEmailOTP(dto: SendOtpDto): Promise<{ message: string }> {
+    const { email } = dto;
     // Sinh OTP mới
     const otp: string = generateOTP();
 
@@ -378,7 +380,8 @@ export class AuthService {
     }
   }
 
-  async requestResetPassword(email: string): Promise<{ message: string }> {
+  async requestResetPassword(dto: SendOtpDto): Promise<{ message: string }> {
+    const { email } = dto;
     const otp: string = generateOTP();
 
     try {

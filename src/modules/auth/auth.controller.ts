@@ -111,7 +111,7 @@ export class AuthController {
   @Post('send-otp')
   @HttpCode(HttpStatus.OK)
   async sendEmailOTP(@Body() dto: SendOtpDto) {
-    return this.authService.sendEmailOTP(dto.email);
+    return this.authService.sendEmailOTP(dto);
   }
 
   @Throttle({ default: { limit: THROTTLE_LIMIT, ttl: THROTTLE_TTL } })
@@ -119,7 +119,7 @@ export class AuthController {
   @Post('resend-otp')
   @HttpCode(HttpStatus.OK)
   async resendEmailOTP(@Body() dto: SendOtpDto) {
-    return this.authService.resendEmailOTP(dto.email);
+    return this.authService.resendEmailOTP(dto);
   }
 
   @Post('verify-otp')
@@ -131,7 +131,7 @@ export class AuthController {
   @Post('request-reset-password')
   @HttpCode(HttpStatus.OK)
   async requestResetPassword(@Body() dto: SendOtpDto) {
-    return this.authService.requestResetPassword(dto.email);
+    return this.authService.requestResetPassword(dto);
   }
 
   @Put('reset-password')

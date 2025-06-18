@@ -14,24 +14,18 @@ export class RelationshipsController {
   @Post('request-friend')
   async requestFriend(
     @CurrentUser('accountId') accountId: string,
-    @Body() requestFriendDto: RequestFriendDto,
+    @Body() dto: RequestFriendDto,
   ) {
-    return this.relationshipsService.requestFriend(
-      accountId,
-      requestFriendDto.targetAccountId,
-    );
+    return this.relationshipsService.requestFriend(accountId, dto);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('accept-request-friend')
   async acceptRequestFriend(
     @CurrentUser('accountId') accountId: string,
-    @Body() acceptRequestFriendDto: AcceptFriendDto,
+    @Body() dto: AcceptFriendDto,
   ) {
-    return this.relationshipsService.acceptFriendRequest(
-      accountId,
-      acceptRequestFriendDto.relationshipId,
-    );
+    return this.relationshipsService.acceptFriendRequest(accountId, dto);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -66,11 +60,8 @@ export class RelationshipsController {
   @Post('unfriend')
   async unfriend(
     @CurrentUser('accountId') accountId: string,
-    @Body() unfriendDto: UnfriendDto,
+    @Body() dto: UnfriendDto,
   ) {
-    return this.relationshipsService.unfriend(
-      accountId,
-      unfriendDto.friendAccountId,
-    );
+    return this.relationshipsService.unfriend(accountId, dto);
   }
 }

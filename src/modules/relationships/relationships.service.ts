@@ -26,6 +26,9 @@ import {
   buildPaginationMeta,
   PaginationMeta,
 } from 'src/common/helpers/pagination.helpers';
+import { RequestFriendDto } from './dto/request-friend.dto';
+import { AcceptFriendDto } from './dto/accept-friend.dto';
+import { UnfriendDto } from './dto/unfriend.dto';
 
 @Injectable()
 export class RelationshipsService {
@@ -41,8 +44,10 @@ export class RelationshipsService {
 
   async requestFriend(
     actorAccountId: string,
-    targetAccountId: string,
+    dto: RequestFriendDto,
   ): Promise<{ message: string; relationship: RelationshipDocument }> {
+    const { targetAccountId } = dto;
+
     if (actorAccountId === targetAccountId) {
       throw new BadRequestException(`Không thể kết bạn với chính mình`);
     }
@@ -97,12 +102,13 @@ export class RelationshipsService {
 
   async acceptFriendRequest(
     targetAccountId: string,
-    relationshipId: string,
+    dto: AcceptFriendDto,
   ): Promise<{
     message: string;
     relationship: RelationshipDocument;
     conversation: ConversationDocument;
   }> {
+    const { relationshipId } = dto;
     const relationship = await this.relationshipModel.findById(relationshipId);
 
     if (!relationship) {
@@ -257,8 +263,9 @@ export class RelationshipsService {
 
   async unfriend(
     accountId: string,
-    friendAccountId: string,
+    dto: UnfriendDto,
   ): Promise<{ message: string; relationship: RelationshipDocument }> {
+    const { friendAccountId } = dto;
     const relationship = await this.relationshipModel.findOneAndDelete({
       $or: [
         {
