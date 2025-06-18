@@ -30,6 +30,7 @@ import { RedisService } from 'src/shared/redis/redis.service';
 import { VerifyOTPDto } from './dto/email-otp.dto';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ChatService } from '../chat/chat.service';
 
 @Injectable()
 export class AuthService {
@@ -51,6 +52,8 @@ export class AuthService {
     private readonly mailerService: MailerService,
 
     private redisService: RedisService,
+
+    private chatService: ChatService,
 
     @Inject(WINSTON_MODULE_NEST_PROVIDER)
     private readonly logger: LoggerService,
@@ -130,16 +133,16 @@ export class AuthService {
       const saltRounds = this.hashRound;
       const hashedPassword = await bcrypt.hash(dto.password, saltRounds);
 
-      const newAccount = new this.accountModel({
+      const newAccount = await this.accountModel.create({
         phone: formatPhone(dto.phone),
         email: dto.email,
         password: hashedPassword,
-        //isActive: default-false
         roles: [...(Array.isArray(dto.role) ? dto.role : []), defaultRole._id],
         user: user._id,
       });
 
-      await newAccount.save();
+      await this.chatService.generateMyCloud(newAccount._id as string);
+
       return {
         message: 'Tài khoản đã được tạo thành công',
       };

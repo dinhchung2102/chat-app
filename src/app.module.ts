@@ -12,6 +12,7 @@ import { WinstonModule } from 'nest-winston';
 import * as winston from 'winston';
 import { RelationshipsModule } from './modules/relationships/relationships.module';
 import { EventsModule } from './shared/events/events.module';
+import { ChatModule } from './modules/chat/chat.module';
 
 @Module({
   imports: [
@@ -86,6 +87,7 @@ import { EventsModule } from './shared/events/events.module';
     AuthModule,
     UserModule,
     RelationshipsModule,
+    ChatModule,
     RedisModule,
     EventsModule,
   ],

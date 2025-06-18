@@ -9,6 +9,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RedisModule } from 'src/shared/redis/redis.module';
+import { ChatModule } from '../chat/chat.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { RedisModule } from 'src/shared/redis/redis.module';
     }),
     forwardRef(() => UserModule),
     RedisModule,
+    ChatModule,
   ],
   providers: [AuthService, JwtAuthGuard],
   controllers: [AuthController],

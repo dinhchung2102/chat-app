@@ -1,0 +1,15 @@
+export enum MessageType {
+  TEXT = 'text',
+  IMAGE = 'image',
+  VIDEO = 'video',
+  AUDIO = 'audio',
+  FILE = 'file',
+  FOLDER = 'folder',
+  LINK = 'link',
+  LOCATION = 'location',
+  CONTACT = 'contact',
+  EVENT = 'event',
+  TASK = 'task',
+  NOTE = 'note',
+  REMINDER = 'reminder',
+}
