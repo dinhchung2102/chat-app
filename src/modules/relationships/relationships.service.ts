@@ -87,7 +87,7 @@ export class RelationshipsService {
     });
 
     const notifyFriendRequestDto: NotifyFriendRequestDto = {
-      userId: targetAccountId,
+      accountId: targetAccountId,
       actorName: actorAccount.account.user.fullName || 'Người lạ',
       relationship: relationship,
     };
@@ -138,7 +138,7 @@ export class RelationshipsService {
       participants: [relationship.actorAccount, relationship.targetAccount],
     });
     const notifyFriendAcceptedDto: NotifyFriendAcceptedDto = {
-      userId: (
+      accountId: (
         relationship.actorAccount as unknown as Types.ObjectId
       ).toString(),
       targetName: targetAccount.account.user.fullName,
