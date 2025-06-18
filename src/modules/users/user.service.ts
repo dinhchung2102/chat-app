@@ -81,12 +81,14 @@ export class UserService {
   async findUser(
     userId: string,
     dto: FindUserDto,
+    page: number,
+    limit: number,
   ): Promise<{
     message: string;
     users: UserProfileDto[];
     pagination: PaginationMeta;
   }> {
-    const { keyword, page = 1, limit = 10 } = dto;
+    const { keyword } = dto;
 
     if (!keyword?.trim()) {
       throw new BadRequestException('Thiếu từ khóa tìm kiếm');
