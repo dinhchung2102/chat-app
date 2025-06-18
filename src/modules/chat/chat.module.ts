@@ -5,6 +5,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { Conversation, ConversationSchema } from './schema/conversation.schema';
 import { Message, MessageSchema } from './schema/message.schema';
 import { AuthModule } from '../auth';
+import { EventsModule } from 'src/shared/events/events.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { AuthModule } from '../auth';
       { name: Message.name, schema: MessageSchema },
     ]),
     forwardRef(() => AuthModule),
+    forwardRef(() => EventsModule),
   ],
   controllers: [ChatController],
   providers: [ChatService],

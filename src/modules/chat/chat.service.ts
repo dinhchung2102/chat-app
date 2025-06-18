@@ -19,6 +19,7 @@ import {
   buildPaginationMeta,
   PaginationMeta,
 } from 'src/common/helpers/pagination.helpers';
+import { EventsGateway } from 'src/shared/events/events.gateway';
 
 @Injectable()
 export class ChatService {
@@ -28,6 +29,8 @@ export class ChatService {
 
     @InjectModel(Message.name)
     private messageModel: Model<MessageDocument>,
+
+    private eventsGateway: EventsGateway,
   ) {}
 
   async generateMyCloud(accountId: string) {
@@ -64,6 +67,17 @@ export class ChatService {
       messageType: MessageType.TEXT,
       status: MessageStatus.SENT,
       seenBy: [new Types.ObjectId(senderId)],
+    });
+
+    //Emit event cho tất cả người dùng trong cuộc trò chuyện (-ngoại trừ sender)
+    const senderObjectId = new Types.ObjectId(senderId);
+    conversation.participants.forEach((participant: AccountDocument) => {
+      if (participant._id != senderObjectId) {
+        this.eventsGateway.newMessage({
+          accountId: (participant._id as Types.ObjectId).toString(),
+          message: messageSent,
+        });
+      }
     });
     return { message: 'Đã gửi', messagesent: messageSent };
   }
