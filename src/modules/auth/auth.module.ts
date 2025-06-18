@@ -27,7 +27,7 @@ import { ChatModule } from '../chat/chat.module';
     }),
     forwardRef(() => UserModule),
     RedisModule,
-    ChatModule,
+    forwardRef(() => ChatModule),
   ],
   providers: [AuthService, JwtAuthGuard],
   controllers: [AuthController],

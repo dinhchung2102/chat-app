@@ -17,6 +17,11 @@ import { NotifyFriendRequestDto } from 'src/shared/events/dto/notify-friend-requ
 import { Relationships } from 'src/common/enums/relationships.enum';
 import { NotifyFriendAcceptedDto } from 'src/shared/events/dto/notify-friend-accepted.dto';
 import { AccountDocument } from '../auth/schema/account.schema';
+import {
+  Conversation,
+  ConversationDocument,
+} from '../chat/schema/conversation.schema';
+import { ConversationType } from 'src/common/enums/conversation.type';
 
 @Injectable()
 export class RelationshipsService {
@@ -26,6 +31,8 @@ export class RelationshipsService {
     private readonly eventsGateway: EventsGateway,
     @InjectModel(Relationship.name)
     private relationshipModel: Model<RelationshipDocument>,
+    @InjectModel(Conversation.name)
+    private conversationModel: Model<ConversationDocument>,
   ) {}
 
   async requestFriend(
@@ -87,7 +94,11 @@ export class RelationshipsService {
   async acceptFriendRequest(
     targetAccountId: string,
     relationshipId: string,
-  ): Promise<{ message: string; relationship: RelationshipDocument }> {
+  ): Promise<{
+    message: string;
+    relationship: RelationshipDocument;
+    conversation: ConversationDocument;
+  }> {
     const relationship = await this.relationshipModel.findById(relationshipId);
 
     if (!relationship) {
@@ -112,6 +123,10 @@ export class RelationshipsService {
     relationship.status = Relationships.ACCEPTED;
 
     await relationship.save();
+    const conversation = await this.conversationModel.create({
+      conversationType: ConversationType.PRIVATE,
+      participants: [relationship.actorAccount, relationship.targetAccount],
+    });
     const notifyFriendAcceptedDto: NotifyFriendAcceptedDto = {
       userId: (
         relationship.actorAccount as unknown as Types.ObjectId
@@ -125,6 +140,7 @@ export class RelationshipsService {
     return {
       message: 'Chấp nhận lời mời kết bạn thành công',
       relationship: relationship,
+      conversation: conversation,
     };
   }
 
