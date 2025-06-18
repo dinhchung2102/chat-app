@@ -155,7 +155,7 @@ export class RelationshipsService {
   ): Promise<{
     message: string;
     relationships: RelationshipDocument[];
-    meta: PaginationMeta;
+    pagination: PaginationMeta;
   }> {
     const skip = (page - 1) * limit;
 
@@ -181,12 +181,12 @@ export class RelationshipsService {
         }),
     ]);
 
-    const meta = buildPaginationMeta(total, page, limit);
+    const pagination = buildPaginationMeta(total, page, limit);
 
     return {
       message: 'Lấy danh sách lời mời kết bạn thành công',
       relationships,
-      meta,
+      pagination,
     };
   }
 
