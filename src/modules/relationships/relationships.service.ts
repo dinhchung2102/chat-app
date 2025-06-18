@@ -22,6 +22,10 @@ import {
   ConversationDocument,
 } from '../chat/schema/conversation.schema';
 import { ConversationType } from 'src/common/enums/conversation.type';
+import {
+  buildPaginationMeta,
+  PaginationMeta,
+} from 'src/common/helpers/pagination.helpers';
 
 @Injectable()
 export class RelationshipsService {
@@ -145,40 +149,74 @@ export class RelationshipsService {
   }
 
   async getFriendRequests(
-    targetAccountId: string, //Id của user nhận lời mời kết bạn
-  ): Promise<{ message: string; relationships: RelationshipDocument[] }> {
-    const relationships = await this.relationshipModel
-      .find({
-        targetAccount: new Types.ObjectId(targetAccountId),
-        status: Relationships.PENDING,
-      })
-      .populate({
-        path: 'actorAccount',
-        select: '_id email phone',
-        populate: {
-          path: 'user',
-          select:
-            'fullName gender dateOfBirth avatar backgroundImage bio address',
-        },
-      });
+    targetAccountId: string,
+    page: number,
+    limit: number,
+  ): Promise<{
+    message: string;
+    relationships: RelationshipDocument[];
+    meta: PaginationMeta;
+  }> {
+    const skip = (page - 1) * limit;
+
+    const filter = {
+      targetAccount: new Types.ObjectId(targetAccountId),
+      status: Relationships.PENDING,
+    };
+
+    const [total, relationships] = await Promise.all([
+      this.relationshipModel.countDocuments(filter),
+      this.relationshipModel
+        .find(filter)
+        .skip(skip)
+        .limit(limit)
+        .populate({
+          path: 'actorAccount',
+          select: '_id email phone',
+          populate: {
+            path: 'user',
+            select:
+              'fullName gender dateOfBirth avatar backgroundImage bio address',
+          },
+        }),
+    ]);
+
+    const meta = buildPaginationMeta(total, page, limit);
 
     return {
       message: 'Lấy danh sách lời mời kết bạn thành công',
-      relationships: relationships,
+      relationships,
+      meta,
     };
   }
 
   async getFriends(
     accountId: string,
-  ): Promise<{ message: string; friendAccounts: AccountDocument[] }> {
+    page: number,
+    limit: number,
+  ): Promise<{
+    message: string;
+    friendAccounts: AccountDocument[];
+    pagination: PaginationMeta;
+  }> {
+    const skip = (page - 1) * limit;
+
+    // Điều kiện lọc
+    const matchCondition = {
+      status: Relationships.ACCEPTED,
+      $or: [
+        { actorAccount: new Types.ObjectId(accountId) },
+        { targetAccount: new Types.ObjectId(accountId) },
+      ],
+    };
+
+    const total = await this.relationshipModel.countDocuments(matchCondition);
+
+    // Truy vấn relationships có phân trang
     const relationships = await this.relationshipModel
-      .find({
-        status: Relationships.ACCEPTED,
-        $or: [
-          { actorAccount: new Types.ObjectId(accountId) },
-          { targetAccount: new Types.ObjectId(accountId) },
-        ],
-      })
+      .find(matchCondition)
+      .skip(skip)
+      .limit(limit)
       .populate([
         {
           path: 'actorAccount',
@@ -200,18 +238,20 @@ export class RelationshipsService {
         },
       ]);
 
-    const friends = relationships.map((rel) => {
-      // Nếu mình là actor → bạn là target
-      if (rel.actorAccount?._id == accountId.toString()) {
+    // Trích danh sách bạn
+    const friendAccounts = relationships.map((rel) => {
+      if (rel.actorAccount?._id == accountId) {
         return rel.targetAccount;
       }
-
-      // Ngược lại, mình là target → bạn là actor
       return rel.actorAccount;
     });
+
+    const pagination = buildPaginationMeta(total, page, limit);
+
     return {
       message: 'Lấy danh sách bạn bè thành công',
-      friendAccounts: friends,
+      friendAccounts,
+      pagination,
     };
   }
 

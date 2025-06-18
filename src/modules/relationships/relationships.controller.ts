@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { RelationshipsService } from './relationships.service';
 import { RequestFriendDto } from './dto/request-friend.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -39,19 +47,31 @@ export class RelationshipsController {
 
   @UseGuards(JwtAuthGuard)
   @Get('friend-requests')
-  async getFriendRequests(@Req() req: Request) {
+  async getFriendRequests(
+    @Req() req: Request,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+  ) {
     const jwtPayload: PayloadDto = req.user as PayloadDto;
     return this.relationshipsService.getFriendRequests(
       jwtPayload.accountId.toString(),
+      Number(page),
+      Number(limit),
     );
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('friends')
-  async getFriends(@Req() req: Request) {
+  async getFriends(
+    @Req() req: Request,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+  ) {
     const jwtPayload: PayloadDto = req.user as PayloadDto;
     return this.relationshipsService.getFriends(
-      jwtPayload.accountId.toString(),
+      jwtPayload.accountId,
+      Number(page),
+      Number(limit),
     );
   }
 
