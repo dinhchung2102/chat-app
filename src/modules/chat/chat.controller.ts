@@ -37,7 +37,11 @@ export class ChatController {
     @Query('limit') limit: number = 10,
   ) {
     const jwtPayload: PayloadDto = req.user as PayloadDto;
-    return this.chatService.getConversations(jwtPayload.accountId, page, limit);
+    return this.chatService.getConversations(
+      jwtPayload.accountId,
+      Number(page),
+      Number(limit),
+    );
   }
 
   @UseGuards(JwtAuthGuard)
@@ -53,8 +57,8 @@ export class ChatController {
     return this.chatService.getMessagesByConversationId(
       conversationId,
       jwtPayload.accountId,
-      page,
-      limit,
+      Number(page),
+      Number(limit),
     );
   }
 }
