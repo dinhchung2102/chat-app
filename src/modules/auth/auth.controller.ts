@@ -24,8 +24,8 @@ import { Roles } from 'src/common/decorator/roles.decorator';
 import { SendOtpDto, VerifyOTPDto } from './dto/email-otp.dto';
 import { Response, Request } from 'express';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-import { PayloadDto } from './dto/payload-jwt.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { CurrentUser } from 'src/common/decorator/current-user.decorator';
 
 const THROTTLE_TTL = 5 * 60 * 1000; // 5 minutes
 const THROTTLE_LIMIT = 5;
@@ -143,8 +143,10 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Put('change-password')
   @HttpCode(HttpStatus.OK)
-  async changePassword(@Body() dto: ChangePasswordDto, @Req() req: Request) {
-    const user = req.user as PayloadDto;
-    return this.authService.changePassword(user.accountId, dto.newPassword);
+  async changePassword(
+    @Body() dto: ChangePasswordDto,
+    @CurrentUser('accountId') accountId: string,
+  ) {
+    return this.authService.changePassword(accountId, dto.newPassword);
   }
 }
