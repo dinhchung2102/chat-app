@@ -5,6 +5,7 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import * as cookieParser from 'cookie-parser';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { SuccessResponseInterceptor } from './common/filters/success-response.interceptor';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -18,6 +19,20 @@ async function bootstrap() {
     origin: ['http://localhost:5173'],
     credentials: true,
   });
+
+  if (process.env.NODE_ENV === 'development') {
+    const config = new DocumentBuilder()
+      .setTitle('Ứng dụng nhắn tin trực tuyến')
+      .setDescription(
+        'Ứng dụng được xây dựng nhằm mục đích học tập & rèn luyện kĩ năng \n \n' +
+          'API được xây dựng bằng NestJS và sử dụng Mongodb làm cơ sở dữ liệu',
+      )
+      .setVersion('1.0')
+      .build();
+
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api-docs', app, document);
+  }
 
   await app.listen(3000);
   if (process.env.NODE_ENV === 'development') {
