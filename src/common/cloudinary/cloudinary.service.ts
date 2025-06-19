@@ -1,6 +1,7 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { Readable } from 'stream';
 import { UploadApiResponse, v2 as cloudinaryType } from 'cloudinary';
+import { CloudinaryFolder } from '../dto/cloudinary-folder.dto';
 
 @Injectable()
 export class CloudinaryService {
@@ -12,11 +13,12 @@ export class CloudinaryService {
   async uploadImage(
     buffer: Buffer,
     filename: string,
+    folder: CloudinaryFolder,
   ): Promise<UploadApiResponse> {
     return new Promise<UploadApiResponse>((resolve, reject) => {
       const uploadStream = this.cloudinaryClient.uploader.upload_stream(
         {
-          folder: 'avatars',
+          folder: folder,
           public_id: filename,
         },
         (err, result) => {

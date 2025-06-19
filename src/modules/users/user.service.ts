@@ -18,6 +18,7 @@ import { escapeRegex } from 'src/shared/utils/escapeRegex';
 import { UserProfileDto } from './dto/user-profile.dto';
 import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
 import { UpdateImageDto } from './dto/update-image';
+import { CloudinaryFolder } from 'src/common/dto/cloudinary-folder.dto';
 
 @Injectable()
 export class UserService {
@@ -194,6 +195,7 @@ export class UserService {
     const uploadResult = await this.cloudinaryService.uploadImage(
       fileBuffer,
       filename,
+      CloudinaryFolder.AVATARS,
     );
 
     const user = await this.userModel.findById(userId);
@@ -217,6 +219,7 @@ export class UserService {
     const uploadResult = await this.cloudinaryService.uploadImage(
       fileBuffer,
       filename,
+      CloudinaryFolder.BACKGROUND_IMAGES,
     );
 
     const user = await this.userModel.findById(userId);
