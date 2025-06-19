@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Post,
+  Put,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { RelationshipsService } from './relationships.service';
 import { RequestFriendDto } from './dto/request-friend.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -20,7 +29,7 @@ export class RelationshipsController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Post('accept-request-friend')
+  @Put('accept-request-friend')
   async acceptRequestFriend(
     @CurrentUser('accountId') accountId: string,
     @Body() dto: AcceptFriendDto,
@@ -57,7 +66,7 @@ export class RelationshipsController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Post('unfriend')
+  @Delete('unfriend')
   async unfriend(
     @CurrentUser('accountId') accountId: string,
     @Body() dto: UnfriendDto,
