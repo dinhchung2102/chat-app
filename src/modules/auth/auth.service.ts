@@ -120,6 +120,7 @@ export class AuthService {
         email: dto.email,
         authOTP: dto.authOTP,
       });
+      await this.redisService.delete(`otp:${dto.email}`);
 
       const user = await this.userModel.create({
         fullName: dto.fullName,
@@ -371,7 +372,6 @@ export class AuthService {
     const otpRedis = await this.redisService.getOtp(email);
 
     if (otpRedis && otpRedis.otp === authOTP) {
-      await this.redisService.delete(`otp:${email}`);
       return {
         message: 'OTP đã được xác thực thành công',
       };
@@ -424,6 +424,7 @@ export class AuthService {
       });
     }
     await this.verifyEmailOTP({ email, authOTP });
+    await this.redisService.delete(`otp:${email}`);
     const saltRounds = this.hashRound;
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
     account.password = hashedPassword;
