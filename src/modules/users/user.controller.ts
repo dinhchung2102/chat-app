@@ -67,6 +67,29 @@ export class UserController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Put('update/background-image')
+  @UseInterceptors(
+    FileInterceptor('image', {
+      storage: multer.memoryStorage(),
+      fileFilter: (req, file, cb) => {
+        if (!file.mimetype.startsWith('image/')) {
+          return cb(new multer.MulterError('LIMIT_UNEXPECTED_FILE'), false);
+        }
+        cb(null, true);
+      },
+    }),
+  )
+  async uploadBackgroundImage(
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser('userId') userId: string,
+  ) {
+    const dto: UpdateImageDto = {
+      fileBuffer: file.buffer,
+    };
+    return this.userService.updateUserBackgroundImage(userId, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get('my-profile')
   async getMyProfile(@CurrentUser('userId') userId: string) {
     return this.userService.getMyProfile(userId);

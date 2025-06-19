@@ -207,4 +207,27 @@ export class UserService {
       avatar: uploadResult.secure_url,
     };
   }
+
+  async updateUserBackgroundImage(
+    userId: string,
+    dto: UpdateImageDto,
+  ): Promise<{ message: string; backgroundImage: string }> {
+    const { fileBuffer } = dto;
+    const filename = `user-${userId}-${Date.now()}`;
+    const uploadResult = await this.cloudinaryService.uploadImage(
+      fileBuffer,
+      filename,
+    );
+
+    const user = await this.userModel.findById(userId);
+    if (!user) throw new NotFoundException('Người dùng không tồn tại');
+
+    user.backgroundImage = uploadResult.secure_url;
+    await user.save();
+
+    return {
+      message: 'Cập nhật ảnh nền thành công',
+      backgroundImage: uploadResult.secure_url,
+    };
+  }
 }
