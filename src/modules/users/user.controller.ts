@@ -5,8 +5,10 @@ import {
   Post,
   Put,
   Query,
+  UploadedFile,
   UseFilters,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { AllExceptionsFilter } from 'src/common/filters/http-exception.filter';
 import { UserDocument } from './schema/user.schema';
@@ -16,6 +18,9 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { SkipThrottle } from '@nestjs/throttler';
 import { FindUserDto } from './dto/find-user.dto';
 import { CurrentUser } from 'src/common/decorator/current-user.decorator';
+import { FileInterceptor } from '@nestjs/platform-express';
+import * as multer from 'multer';
+import { UpdateImageDto } from './dto/update-image';
 
 @UseFilters(new AllExceptionsFilter())
 // @SkipThrottle()   // Các route bên trong controller này sẽ không bị throttling
@@ -36,6 +41,29 @@ export class UserController {
     @Body() dto: Partial<UserDto>,
   ) {
     return this.userService.updateUser(accountId, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('update/avatar')
+  @UseInterceptors(
+    FileInterceptor('image', {
+      storage: multer.memoryStorage(),
+      fileFilter: (req, file, cb) => {
+        if (!file.mimetype.startsWith('image/')) {
+          return cb(new multer.MulterError('LIMIT_UNEXPECTED_FILE'), false);
+        }
+        cb(null, true);
+      },
+    }),
+  )
+  async uploadAvatar(
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser('userId') userId: string,
+  ) {
+    const dto: UpdateImageDto = {
+      fileBuffer: file.buffer,
+    };
+    return this.userService.updateUserAvatar(userId, dto);
   }
 
   @UseGuards(JwtAuthGuard)

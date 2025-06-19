@@ -16,12 +16,16 @@ import { getTypeFormat } from 'src/shared/utils/getFormatType';
 import { formatPhone } from 'src/shared/utils/formatPhone';
 import { escapeRegex } from 'src/shared/utils/escapeRegex';
 import { UserProfileDto } from './dto/user-profile.dto';
+import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
+import { UpdateImageDto } from './dto/update-image';
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectModel(User.name)
     private userModel: Model<UserDocument>,
+
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   async createNewUser(dto: UserDto): Promise<UserDocument> {
@@ -169,13 +173,38 @@ export class UserService {
     ];
 
     const result = await this.userModel.aggregate(aggregatePipeline);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const users = (result[0]?.data as UserProfileDto[]) || [];
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const total = (result[0]?.metadata[0]?.total as number) || 0;
 
     return {
       message: `Kết quả tìm kiếm với ${typeKeyword === 'email' ? 'email' : typeKeyword === 'phone' ? 'số điện thoại' : 'từ khóa'}: ${keyword}`,
       users,
       pagination: buildPaginationMeta(total, page, limit),
+    };
+  }
+
+  async updateUserAvatar(
+    userId: string,
+    dto: UpdateImageDto,
+  ): Promise<{ message: string; avatar: string }> {
+    const { fileBuffer } = dto;
+    const filename = `user-${userId}-${Date.now()}`;
+    const uploadResult = await this.cloudinaryService.uploadImage(
+      fileBuffer,
+      filename,
+    );
+
+    const user = await this.userModel.findById(userId);
+    if (!user) throw new NotFoundException('Người dùng không tồn tại');
+
+    user.avatar = uploadResult.secure_url;
+    await user.save();
+
+    return {
+      message: 'Cập nhật avatar thành công',
+      avatar: uploadResult.secure_url,
     };
   }
 }
