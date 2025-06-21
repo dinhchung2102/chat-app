@@ -13,6 +13,10 @@ import * as winston from 'winston';
 import { RelationshipsModule } from './modules/relationships/relationships.module';
 import { EventsModule } from './shared/events/events.module';
 import { ChatModule } from './modules/chat/chat.module';
+import { BullModule } from '@nestjs/bullmq';
+import { ImageUploadModule } from './shared/image-upload/image-upload.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { FileCleanupModule } from './shared/file-cleanup/file-cleanup.module';
 
 @Module({
   imports: [
@@ -69,7 +73,7 @@ import { ChatModule } from './modules/chat/chat.module';
             winston.format.colorize(),
             winston.format.printf(({ timestamp, level, message, context }) => {
               const contextStr = context?.toString() || 'ChatApp';
-              return `[${timestamp}] ${level} [${contextStr}] ${message}`;
+              return `[${timestamp as string}] ${level} [${contextStr}] ${message as string}`;
             }),
           ),
         }),
@@ -83,6 +87,15 @@ import { ChatModule } from './modules/chat/chat.module';
         }),
       ],
     }),
+    BullModule.forRoot({
+      connection: {
+        host: 'localhost',
+        port: 6379,
+      },
+    }),
+    ScheduleModule.forRoot(),
+    FileCleanupModule,
+    ImageUploadModule,
 
     AuthModule,
     UserModule,

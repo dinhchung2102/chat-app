@@ -62,6 +62,7 @@ export class UserController {
   ) {
     const dto: UpdateImageDto = {
       fileBuffer: file.buffer,
+      originalname: file.originalname,
     };
     return this.userService.updateUserAvatar(userId, dto);
   }
@@ -85,6 +86,7 @@ export class UserController {
   ) {
     const dto: UpdateImageDto = {
       fileBuffer: file.buffer,
+      originalname: file.originalname,
     };
     return this.userService.updateUserBackgroundImage(userId, dto);
   }

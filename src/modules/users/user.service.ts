@@ -18,7 +18,10 @@ import { escapeRegex } from 'src/shared/utils/escapeRegex';
 import { UserProfileDto } from './dto/user-profile.dto';
 import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
 import { UpdateImageDto } from './dto/update-image';
-import { CloudinaryFolder } from 'src/common/dto/cloudinary-folder.dto';
+import * as fs from 'fs';
+import * as path from 'path';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 
 @Injectable()
 export class UserService {
@@ -27,6 +30,8 @@ export class UserService {
     private userModel: Model<UserDocument>,
 
     private readonly cloudinaryService: CloudinaryService,
+
+    @InjectQueue('image-upload') private imageUploadQueue: Queue,
   ) {}
 
   async createNewUser(dto: UserDto): Promise<UserDocument> {
@@ -186,27 +191,35 @@ export class UserService {
     };
   }
 
-  async updateUserAvatar(
-    userId: string,
-    dto: UpdateImageDto,
-  ): Promise<{ message: string; avatar: string }> {
-    const { fileBuffer } = dto;
-    const filename = `user-${userId}-${Date.now()}`;
-    const uploadResult = await this.cloudinaryService.uploadImage(
-      fileBuffer,
+  async updateUserAvatar(userId: string, dto: UpdateImageDto) {
+    const { fileBuffer, originalname } = dto;
+    const ext = path.extname(originalname);
+    const filename = `user-${userId}-${Date.now()}${ext}`;
+
+    const uploadsDir = path.join(process.cwd(), 'uploads', 'avatars');
+    if (!fs.existsSync(uploadsDir))
+      fs.mkdirSync(uploadsDir, { recursive: true });
+
+    const filepath = path.join(uploadsDir, filename);
+    fs.writeFileSync(filepath, fileBuffer);
+
+    await this.imageUploadQueue.add('upload', {
+      userId,
+      type: 'avatar',
       filename,
-      CloudinaryFolder.AVATARS,
-    );
+    });
+
+    // Trả về URL tạm thời
+    const avatarUrl = `${process.env.HOST_URL}/uploads/avatars/${filename}`;
 
     const user = await this.userModel.findById(userId);
     if (!user) throw new NotFoundException('Người dùng không tồn tại');
-
-    user.avatar = uploadResult.secure_url;
+    user.avatar = avatarUrl;
     await user.save();
 
     return {
       message: 'Cập nhật avatar thành công',
-      avatar: uploadResult.secure_url,
+      avatar: avatarUrl,
     };
   }
 
@@ -214,23 +227,30 @@ export class UserService {
     userId: string,
     dto: UpdateImageDto,
   ): Promise<{ message: string; backgroundImage: string }> {
-    const { fileBuffer } = dto;
-    const filename = `user-${userId}-${Date.now()}`;
-    const uploadResult = await this.cloudinaryService.uploadImage(
-      fileBuffer,
-      filename,
-      CloudinaryFolder.BACKGROUND_IMAGES,
-    );
+    const { fileBuffer, originalname } = dto;
+    const ext = path.extname(originalname);
+
+    const uploadsDir = path.join(process.cwd(), 'uploads', 'background-images');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+
+    const filename = `user-${userId}-${Date.now()}${ext}`;
+    const filepath = path.join(uploadsDir, filename);
+
+    fs.writeFileSync(filepath, fileBuffer);
+
+    const backgroundImageUrl = `${process.env.HOST_URL}/uploads/background-images/${filename}`;
 
     const user = await this.userModel.findById(userId);
     if (!user) throw new NotFoundException('Người dùng không tồn tại');
 
-    user.backgroundImage = uploadResult.secure_url;
+    user.backgroundImage = backgroundImageUrl;
     await user.save();
 
     return {
       message: 'Cập nhật ảnh nền thành công',
-      backgroundImage: uploadResult.secure_url,
+      backgroundImage: backgroundImageUrl,
     };
   }
 }

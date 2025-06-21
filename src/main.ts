@@ -6,6 +6,8 @@ import * as cookieParser from 'cookie-parser';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { SuccessResponseInterceptor } from './common/filters/success-response.interceptor';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import * as express from 'express';
+import { join } from 'path';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -14,6 +16,7 @@ async function bootstrap() {
   app.useGlobalInterceptors(new SuccessResponseInterceptor());
   app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
   app.use(cookieParser());
+  app.use('/uploads', express.static(join(__dirname, '..', 'uploads')));
   // main.ts
   app.enableCors({
     origin: ['http://localhost:5173, http://localhost:3000'],
