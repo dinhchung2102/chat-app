@@ -9,4 +9,6 @@ export class LoginDto {
   @IsString()
   @IsNotEmpty()
   password: string;
+
+  clientType: string = 'web';
 }

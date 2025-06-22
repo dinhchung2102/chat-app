@@ -72,6 +72,14 @@ export class AuthController {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
     });
 
+    if (dto.clientType === 'app') {
+      return {
+        message: 'Đăng nhập thành công',
+        accessToken,
+        refreshToken,
+        account,
+      };
+    }
     return {
       message: 'Đăng nhập thành công',
       accessToken,
