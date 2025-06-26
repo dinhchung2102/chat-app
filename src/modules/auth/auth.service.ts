@@ -20,7 +20,6 @@ import { LoginDto } from './dto/login.dto';
 import { JwtService } from '@nestjs/jwt';
 import { AccountDto } from './dto/account.dto';
 import { plainToInstance } from 'class-transformer';
-import { formatPhone } from 'src/shared/utils/formatPhone';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ConfigService } from '@nestjs/config';
 import { MailerService } from '@nestjs-modules/mailer';
@@ -98,15 +97,15 @@ export class AuthService {
   async createNewAccount(dto: CreateAccountDto): Promise<{ message: string }> {
     try {
       const defaultRole = await this.getRoleByName('user');
-      const existPhone = await this.accountModel.findOne({
-        phone: formatPhone(dto.phone),
+      const existUsername = await this.accountModel.findOne({
+        username: dto.username,
       });
       const existEmail = await this.accountModel.findOne({ email: dto.email });
 
-      if (existPhone) {
+      if (existUsername) {
         throw new ConflictException({
-          message: `Số điện thoại đã được sử dụng`,
-          errorCode: 'PHONE_EXISTS',
+          message: `Tên đăng nhập đã được sử dụng`,
+          errorCode: 'USERNAME_EXISTS',
         });
       }
       if (existEmail) {
@@ -135,7 +134,7 @@ export class AuthService {
       const hashedPassword = await bcrypt.hash(dto.password, saltRounds);
 
       const newAccount = await this.accountModel.create({
-        phone: formatPhone(dto.phone),
+        username: dto.username,
         email: dto.email,
         password: hashedPassword,
         roles: [...(Array.isArray(dto.role) ? dto.role : []), defaultRole._id],
@@ -165,7 +164,7 @@ export class AuthService {
   }> {
     try {
       const account = await this.accountModel
-        .findOne({ phone: formatPhone(dto.phone) })
+        .findOne({ username: dto.username })
         .populate<{ roles: RoleDocument[] }>('roles');
 
       if (!account) throw new NotFoundException('Tài khoản không tồn tại');
@@ -173,7 +172,7 @@ export class AuthService {
       const isMatch = await bcrypt.compare(dto.password, account.password);
       if (!isMatch) {
         this.logger.error(
-          `Bro: ${account.phone} nhập sai mật khẩu`,
+          `Bro: ${account.username} nhập sai mật khẩu`,
           undefined,
           AuthService.name,
         );
@@ -183,7 +182,7 @@ export class AuthService {
 
       const payload = {
         accountId: account._id,
-        phone: account.phone,
+        username: account.username,
         roles: roleNames,
         userId: account.user,
       };
@@ -267,7 +266,7 @@ export class AuthService {
 
       const newPayload = {
         accountId: account._id,
-        phone: account.phone,
+        username: account.username,
         roles: roleNames,
         userId: account.user,
       };

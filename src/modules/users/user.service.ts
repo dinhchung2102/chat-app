@@ -13,7 +13,6 @@ import {
   PaginationMeta,
 } from 'src/common/helpers/pagination.helpers';
 import { getTypeFormat } from 'src/shared/utils/getFormatType';
-import { formatPhone } from 'src/shared/utils/formatPhone';
 import { escapeRegex } from 'src/shared/utils/escapeRegex';
 import { UserProfileDto } from './dto/user-profile.dto';
 import { CloudinaryService } from 'src/common/cloudinary/cloudinary.service';
@@ -110,8 +109,8 @@ export class UserService {
     let exactMatchKeyword = rawKeyword;
     let regexKeyword = escapeRegex(rawKeyword);
 
-    if (typeKeyword === 'phone') {
-      exactMatchKeyword = formatPhone(rawKeyword);
+    if (typeKeyword === 'username') {
+      exactMatchKeyword = rawKeyword;
     } else if (typeKeyword === 'email') {
       // không cần regex cho email
       regexKeyword = '';
@@ -126,11 +125,11 @@ export class UserService {
       });
     }
 
-    // nếu là email/phone thì match chính xác
+    // nếu là email/username thì match chính xác
     if (typeKeyword === 'email') {
       searchConditions.push({ 'account.email': exactMatchKeyword });
-    } else if (typeKeyword === 'phone') {
-      searchConditions.push({ 'account.phone': exactMatchKeyword });
+    } else if (typeKeyword === 'username') {
+      searchConditions.push({ 'account.username': exactMatchKeyword });
     }
 
     const skip = (page - 1) * limit;
@@ -166,7 +165,7 @@ export class UserService {
                 dateOfBirth: 1,
                 accountId: '$account._id',
                 email: '$account.email',
-                phone: '$account.phone',
+                username: '$account.username',
                 avatar: 1,
                 bio: 1,
                 backgroundImage: 1,
@@ -185,7 +184,7 @@ export class UserService {
     const total = (result[0]?.metadata[0]?.total as number) || 0;
 
     return {
-      message: `Kết quả tìm kiếm với ${typeKeyword === 'email' ? 'email' : typeKeyword === 'phone' ? 'số điện thoại' : 'từ khóa'}: ${keyword}`,
+      message: `Kết quả tìm kiếm với ${typeKeyword === 'email' ? 'email' : typeKeyword === 'username' ? 'tên đăng nhập' : 'từ khóa'}: ${keyword}`,
       users,
       pagination: buildPaginationMeta(total, page, limit),
     };

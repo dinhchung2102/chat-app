@@ -1,6 +1,6 @@
 export class PayloadDto {
   accountId: string;
-  phone: string;
+  username: string;
   roles: string[];
   userId: string;
   iat: number;

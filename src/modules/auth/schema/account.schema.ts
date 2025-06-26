@@ -8,7 +8,7 @@ export type AccountDocument = Account & Document;
 @Schema({ timestamps: true })
 export class Account {
   @Prop({ required: true, unique: true })
-  phone: string;
+  username: string;
 
   @Prop({ required: false, unique: true })
   email: string;

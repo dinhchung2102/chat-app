@@ -178,7 +178,7 @@ export class RelationshipsService {
         .limit(limit)
         .populate({
           path: 'actorAccount',
-          select: '_id email phone',
+          select: '_id email username',
           populate: {
             path: 'user',
             select:
@@ -226,7 +226,7 @@ export class RelationshipsService {
       .populate([
         {
           path: 'actorAccount',
-          select: '_id email phone user',
+          select: '_id email username user',
           populate: {
             path: 'user',
             select:
@@ -235,7 +235,7 @@ export class RelationshipsService {
         },
         {
           path: 'targetAccount',
-          select: '_id email phone user',
+          select: '_id email username user',
           populate: {
             path: 'user',
             select:

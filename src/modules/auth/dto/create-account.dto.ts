@@ -5,6 +5,7 @@ import {
   IsEnum,
   IsNotEmpty,
   IsString,
+  MinLength,
   Matches,
 } from 'class-validator';
 import { Types } from 'mongoose';
@@ -13,10 +14,11 @@ import { SettingDto } from 'src/modules/users/dto/setting.dto';
 export class CreateAccountDto {
   @IsString()
   @IsNotEmpty()
-  @Matches(/^(0|\+84)[0-9]{9}$/, {
-    message: 'Số điện thoại không hợp lệ',
+  @MinLength(3, { message: 'Tên đăng nhập phải có ít nhất 3 ký tự' })
+  @Matches(/^[a-zA-Z0-9_]+$/, {
+    message: 'Tên đăng nhập chỉ được chứa chữ cái, số và dấu gạch dưới',
   })
-  phone: string;
+  username: string;
 
   @IsEmail()
   email: string;

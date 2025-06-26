@@ -1,4 +1,4 @@
-export type FormatType = 'text' | 'phone' | 'email';
+export type FormatType = 'text' | 'username' | 'email';
 
 export function getTypeFormat(input: string): FormatType {
   const trimmed = input.trim();
@@ -8,21 +8,14 @@ export function getTypeFormat(input: string): FormatType {
   }
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const phoneRegex = /^(\+84|84|0)?[1-9]\d{8,9}$/;
+  const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
 
   if (emailRegex.test(trimmed)) {
     return 'email';
   }
 
-  const digitsOnly = trimmed.replace(/\D/g, '');
-
-  if (
-    phoneRegex.test(trimmed) ||
-    (digitsOnly.length >= 9 &&
-      digitsOnly.length <= 11 &&
-      (digitsOnly.startsWith('0') || digitsOnly.startsWith('84')))
-  ) {
-    return 'phone';
+  if (usernameRegex.test(trimmed)) {
+    return 'username';
   }
 
   // Default to text

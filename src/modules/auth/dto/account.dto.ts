@@ -3,7 +3,7 @@ import { Exclude, Expose } from 'class-transformer';
 
 export class AccountDto {
   @Expose()
-  phone: string;
+  username: string;
 
   @Exclude()
   password: string;

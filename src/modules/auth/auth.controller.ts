@@ -53,7 +53,7 @@ export class AuthController {
   }
 
   @Throttle({ default: { limit: THROTTLE_LIMIT, ttl: THROTTLE_TTL } })
-  @SkipThrottle({ default: false })
+  @SkipThrottle({ default: true })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async loginUser(

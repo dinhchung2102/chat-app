@@ -1,13 +1,14 @@
-import { IsString, IsNotEmpty, Matches } from 'class-validator';
+import { IsNotEmpty, IsString, MinLength } from 'class-validator';
 
 export class LoginDto {
   @IsString()
   @IsNotEmpty()
-  @Matches(/^(0|\+84)[0-9]{9}$/, { message: 'Số điện thoại không hợp lệ' })
-  phone: string;
+  @MinLength(3, { message: 'Tên đăng nhập phải có ít nhất 3 ký tự' })
+  username: string;
 
   @IsString()
   @IsNotEmpty()
+  @MinLength(6, { message: 'Mật khẩu phải có ít nhất 6 ký tự' })
   password: string;
 
   clientType: string = 'web';

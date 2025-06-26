@@ -11,7 +11,7 @@ export class UserProfileDto {
   @IsString()
   email: string;
   @IsString()
-  phone: string;
+  username: string;
   @IsString()
   accountId: string;
   @IsString()
