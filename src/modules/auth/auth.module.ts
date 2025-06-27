@@ -10,6 +10,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RedisModule } from 'src/shared/redis/redis.module';
 import { ChatModule } from '../chat/chat.module';
+import { LoggerModule } from 'src/shared/logger/logger.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { ChatModule } from '../chat/chat.module';
     forwardRef(() => UserModule),
     RedisModule,
     forwardRef(() => ChatModule),
+    LoggerModule,
   ],
   providers: [AuthService, JwtAuthGuard],
   controllers: [AuthController],

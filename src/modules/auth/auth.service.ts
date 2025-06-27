@@ -30,32 +30,35 @@ import { SendOtpDto, VerifyOTPDto } from './dto/email-otp.dto';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChatService } from '../chat/chat.service';
+import { AppLoggerService } from 'src/shared/logger/logger.service';
 
 @Injectable()
 export class AuthService {
   private readonly hashRound: number = 10;
   constructor(
     @InjectModel(Role.name)
-    private roleModel: Model<RoleDocument>,
+    private readonly roleModel: Model<RoleDocument>,
 
     @InjectModel(User.name)
-    private userModel: Model<UserDocument>,
+    private readonly userModel: Model<UserDocument>,
 
     @InjectModel(Account.name)
-    private accountModel: Model<AccountDocument>,
+    private readonly accountModel: Model<AccountDocument>,
 
-    private jwtService: JwtService,
+    private readonly jwtService: JwtService,
 
-    private configService: ConfigService,
+    private readonly configService: ConfigService,
 
     private readonly mailerService: MailerService,
 
-    private redisService: RedisService,
+    private readonly redisService: RedisService,
 
-    private chatService: ChatService,
+    private readonly chatService: ChatService,
 
     @Inject(WINSTON_MODULE_NEST_PROVIDER)
     private readonly logger: LoggerService,
+
+    private readonly appLogger: AppLoggerService,
   ) {}
 
   async createNewRole(dto: CreateRoleDto): Promise<RoleDocument> {
@@ -143,6 +146,13 @@ export class AuthService {
 
       await this.chatService.generateMyCloud(newAccount._id as string);
 
+      this.appLogger.logAuth('Tài khoản mới được tạo thành công', {
+        username: dto.username,
+        email: dto.email,
+        accountId: newAccount._id,
+        userId: user._id,
+      });
+
       return {
         message: 'Tài khoản đã được tạo thành công',
       };
@@ -171,6 +181,10 @@ export class AuthService {
 
       const isMatch = await bcrypt.compare(dto.password, account.password);
       if (!isMatch) {
+        this.appLogger.logAuth('Đăng nhập thất bại - sai mật khẩu', {
+          username: dto.username,
+          ip: 'unknown', // Có thể thêm IP từ request
+        });
         this.logger.error(
           `Bro: ${account.username} nhập sai mật khẩu`,
           undefined,
@@ -227,6 +241,13 @@ export class AuthService {
           excludeExtraneousValues: true,
         },
       );
+
+      this.appLogger.logAuth('Đăng nhập thành công', {
+        username: account.username,
+        accountId: account._id,
+        roles: roleNames,
+      });
+
       return {
         message: 'Đăng nhập thành công',
         accessToken,

@@ -17,6 +17,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { ImageUploadModule } from './shared/image-upload/image-upload.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { FileCleanupModule } from './shared/file-cleanup/file-cleanup.module';
+import { LoggerModule } from './shared/logger/logger.module';
 
 @Module({
   imports: [
@@ -78,8 +79,16 @@ import { FileCleanupModule } from './shared/file-cleanup/file-cleanup.module';
           ),
         }),
         new winston.transports.File({
-          filename: 'src/shared/logger/error.log',
+          filename: 'src/shared/logger/files/error.log',
           level: 'error',
+          format: winston.format.combine(
+            winston.format.timestamp(),
+            winston.format.json(),
+          ),
+        }),
+        new winston.transports.File({
+          filename: 'src/shared/logger/files/combined.log',
+          level: 'info',
           format: winston.format.combine(
             winston.format.timestamp(),
             winston.format.json(),
@@ -96,6 +105,7 @@ import { FileCleanupModule } from './shared/file-cleanup/file-cleanup.module';
     ScheduleModule.forRoot(),
     FileCleanupModule,
     ImageUploadModule,
+    LoggerModule,
 
     AuthModule,
     UserModule,
