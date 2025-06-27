@@ -2,6 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 import { Gender } from 'src/common/enums/gender.enum';
 import { SettingDto } from '../dto/setting.dto';
+import { Language } from 'src/common/enums/language.enum';
 
 export type UserDocument = User & Document;
 
@@ -28,7 +29,9 @@ export class User {
   @Prop()
   bio: string;
 
-  @Prop({ default: { theme: 'light', noti: true, language: 'vie' } })
+  @Prop({
+    default: { theme: 'light', noti: true, language: Language.VIETNAMESE },
+  })
   settings: SettingDto;
 }
 

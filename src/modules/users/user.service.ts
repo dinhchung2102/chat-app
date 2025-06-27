@@ -178,10 +178,15 @@ export class UserService {
     ];
 
     const result = await this.userModel.aggregate(aggregatePipeline);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    const users = (result[0]?.data as UserProfileDto[]) || [];
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    const total = (result[0]?.metadata[0]?.total as number) || 0;
+    const aggregateResult = result[0] as
+      | {
+          metadata: Array<{ total: number }>;
+          data: UserProfileDto[];
+        }
+      | undefined;
+
+    const users = aggregateResult?.data || [];
+    const total = aggregateResult?.metadata[0]?.total || 0;
 
     return {
       message: `Kết quả tìm kiếm với ${typeKeyword === 'email' ? 'email' : typeKeyword === 'username' ? 'tên đăng nhập' : 'từ khóa'}: ${keyword}`,

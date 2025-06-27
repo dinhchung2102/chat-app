@@ -37,10 +37,10 @@ export class UserController {
   @UseGuards(JwtAuthGuard)
   @Put('update/profile')
   async updateCurrentUser(
-    @CurrentUser('accountId') accountId: string,
+    @CurrentUser('userId') userId: string,
     @Body() dto: Partial<UserDto>,
   ) {
-    return this.userService.updateUser(accountId, dto);
+    return this.userService.updateUser(userId, dto);
   }
 
   @UseGuards(JwtAuthGuard)

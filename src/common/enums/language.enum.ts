@@ -1,4 +1,4 @@
 export enum Language {
-  VIETNAMESE = 'vie',
+  VIETNAMESE = 'vi',
   ENGLISH = 'en',
 }

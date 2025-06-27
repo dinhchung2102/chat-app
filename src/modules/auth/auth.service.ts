@@ -217,11 +217,16 @@ export class AuthService {
       });
       const accountObj = populatedAccount.toObject();
 
-      accountObj.roles = (accountObj.roles || []).map((r: any) => r.roleName);
-
-      const accountDto = plainToInstance(AccountDto, accountObj, {
-        excludeExtraneousValues: true,
-      });
+      const accountDto = plainToInstance(
+        AccountDto,
+        {
+          ...accountObj,
+          roles: roleNames,
+        },
+        {
+          excludeExtraneousValues: true,
+        },
+      );
       return {
         message: 'Đăng nhập thành công',
         accessToken,
